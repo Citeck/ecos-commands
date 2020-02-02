@@ -1,19 +1,22 @@
 package ru.citeck.ecos.commands
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.KotlinModule
+import com.fasterxml.jackson.databind.JsonNode
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import ru.citeck.ecos.commands.dto.CommandDto
 import ru.citeck.ecos.commands.dto.CommandResultDto
+import ru.citeck.ecos.commands.dto.ErrorDto
 import ru.citeck.ecos.commands.exceptions.ExecutorNotFound
-import java.lang.IllegalStateException
+import ru.citeck.ecos.commands.utils.EcomObjUtils
+import ru.citeck.ecos.commands.utils.ErrorUtils
 import java.time.Instant
 import java.util.*
+import java.util.concurrent.Callable
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
+import kotlin.collections.ArrayList
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
@@ -24,24 +27,27 @@ class CommandsService(factory: CommandsServiceFactory) {
     }
 
     private val props = factory.properties
-    private val remote = factory.remoteCommandsService
+    private val remote by lazy { factory.remoteCommandsService }
+    private val txnManager = factory.transactionManager
+    private val contextSupplier = factory.contextSupplier
+
     private val executors = ConcurrentHashMap<String, ExecutorInfo>()
 
-    private val mapper = ObjectMapper().registerModule(KotlinModule())
-
     fun execute(targetApp: String = props.appName,
-                actor: String = "system",
+                user: String = contextSupplier.getCurrentUser(),
                 type: String,
                 data: Any? = null) : Future<CommandResultDto> {
 
         return execute(CommandDto(
             id = UUID.randomUUID().toString(),
+            tenant = contextSupplier.getCurrentTenant(),
             targetApp = targetApp,
             time = Instant.now(),
-            actor = actor,
-            source = props.instanceId,
+            user = user,
+            sourceApp = props.appName,
+            sourceAppId = props.appInstanceId,
             type = type,
-            data = mapper.valueToTree(data)
+            data = EcomObjUtils.mapper.valueToTree(data)
         ))
     }
 
@@ -55,23 +61,34 @@ class CommandsService(factory: CommandsServiceFactory) {
 
             val executorInfo = executors[command.type] ?: throw ExecutorNotFound()
 
-            var executerCommand: Any? = null
+            var executorCommand: Any? = null
             if (executorInfo.commandType.classifier !== Any::class) {
                 @Suppress("UNCHECKED_CAST")
                 val commandClass = executorInfo.commandType.classifier as KClass<Any>
-                executerCommand = mapper.treeToValue(command.data, commandClass.java)
+                executorCommand = EcomObjUtils.mapper.treeToValue(command.data, commandClass.java)
             }
 
             val started = Instant.now()
 
-            val resultMsg = executorInfo.executor.execute(executerCommand)
+            val errors = ArrayList<ErrorDto>()
+
+            val resultObj : Any? = try {
+                txnManager.doInTransaction(Callable {
+                    executorInfo.executor.execute(executorCommand)
+                })
+            } catch (e : Exception) {
+                log.error("Command execution error", e)
+                errors.add(ErrorUtils.convertException(e))
+                null
+            }
 
             val result = CommandResultDto(
                 id = UUID.randomUUID().toString(),
                 started = started,
                 completed = Instant.now(),
                 command = command,
-                message = resultMsg
+                result = EcomObjUtils.mapper.valueToTree<JsonNode>(resultObj),
+                errors = errors
             )
 
             return CompletableFuture.completedFuture(result)
@@ -84,8 +101,8 @@ class CommandsService(factory: CommandsServiceFactory) {
                 throw IllegalStateException("Remote commands service is not defined!")
             }
 
-            val future = remote.execute(command)
-            return CompletableFuture.supplyAsync { future.get(10, TimeUnit.SECONDS) }
+            val future = remote!!.execute(command)
+            return CompletableFuture.supplyAsync { future.get(props.commandTimeoutMs, TimeUnit.MILLISECONDS) }
         }
     }
 

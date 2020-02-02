@@ -2,7 +2,7 @@ package ru.citeck.ecos.commands
 
 interface CommandExecutor<T : Any?> {
 
-    fun execute(command: T) : String
+    fun execute(command: T) : Any?
 
     fun getType() : String
 }

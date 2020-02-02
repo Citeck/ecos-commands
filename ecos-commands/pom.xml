@@ -33,21 +33,23 @@
             <version>${jackson.kotlin.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+            <version>${jackson.kotlin.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jdk8</artifactId>
+            <version>${jackson.kotlin.version}</version>
+        </dependency>
+
     </dependencies>
 
     <build>
 
         <plugins>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-pmd-plugin</artifactId>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-checkstyle-plugin</artifactId>
-            </plugin>
 
             <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
@@ -88,23 +90,23 @@
                             <relocations>
 <!--                                <relocation>
                                     <pattern>com.google</pattern>
-                                    <shadedPattern>ecoscomm.com.google</shadedPattern>
+                                    <shadedPattern>ecoscom.com.google</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>com.sun.jersey</pattern>
-                                    <shadedPattern>ecoscomm.com.sun.jersey</shadedPattern>
+                                    <shadedPattern>ecoscom.com.sun.jersey</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>com.github</pattern>
-                                    <shadedPattern>ecoscomm.com.github</shadedPattern>
+                                    <shadedPattern>ecoscom.com.github</shadedPattern>
                                 </relocation>-->
                                 <relocation>
                                     <pattern>com.fasterxml.jackson</pattern>
-                                    <shadedPattern>ecoscomm.com.fasterxml.jackson</shadedPattern>
+                                    <shadedPattern>ecoscom.com.fasterxml.jackson</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>com.fasterxml.jackson</pattern>
-                                    <shadedPattern>ecoscomm.com.fasterxml.jackson</shadedPattern>
+                                    <shadedPattern>ecoscom.com.fasterxml.jackson</shadedPattern>
                                 </relocation>
                             </relocations>
                         </configuration>
