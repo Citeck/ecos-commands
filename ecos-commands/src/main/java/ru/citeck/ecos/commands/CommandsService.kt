@@ -1,8 +1,9 @@
 package ru.citeck.ecos.commands
 
-import com.fasterxml.jackson.databind.JsonNode
+import ecos.com.fasterxml.jackson210.databind.JsonNode
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import ru.citeck.ecos.commands.context.CommandCtxManager
 import ru.citeck.ecos.commands.dto.CommandDto
 import ru.citeck.ecos.commands.dto.CommandResultDto
 import ru.citeck.ecos.commands.dto.ErrorDto
@@ -29,25 +30,24 @@ class CommandsService(factory: CommandsServiceFactory) {
     private val props = factory.properties
     private val remote by lazy { factory.remoteCommandsService }
     private val txnManager = factory.transactionManager
-    private val contextSupplier = factory.contextSupplier
 
     private val executors = ConcurrentHashMap<String, ExecutorInfo>()
 
     fun execute(targetApp: String = props.appName,
-                user: String = contextSupplier.getCurrentUser(),
+                user: String = CommandCtxManager.getCurrentUser(),
                 type: String,
                 data: Any? = null) : Future<CommandResultDto> {
 
         return execute(CommandDto(
             id = UUID.randomUUID().toString(),
-            tenant = contextSupplier.getCurrentTenant(),
+            tenant = CommandCtxManager.getCurrentTenant(),
             targetApp = targetApp,
             time = Instant.now(),
             user = user,
             sourceApp = props.appName,
             sourceAppId = props.appInstanceId,
             type = type,
-            data = EcomObjUtils.mapper.valueToTree(data)
+            body = EcomObjUtils.mapper.valueToTree(data)
         ))
     }
 
@@ -65,7 +65,7 @@ class CommandsService(factory: CommandsServiceFactory) {
             if (executorInfo.commandType.classifier !== Any::class) {
                 @Suppress("UNCHECKED_CAST")
                 val commandClass = executorInfo.commandType.classifier as KClass<Any>
-                executorCommand = EcomObjUtils.mapper.treeToValue(command.data, commandClass.java)
+                executorCommand = EcomObjUtils.mapper.treeToValue(command.body, commandClass.java)
             }
 
             val started = Instant.now()
@@ -74,7 +74,9 @@ class CommandsService(factory: CommandsServiceFactory) {
 
             val resultObj : Any? = try {
                 txnManager.doInTransaction(Callable {
-                    executorInfo.executor.execute(executorCommand)
+                    CommandCtxManager.runWith(command.user, command.tenant, Callable {
+                        executorInfo.executor.execute(executorCommand)
+                    })
                 })
             } catch (e : Exception) {
                 log.error("Command execution error", e)

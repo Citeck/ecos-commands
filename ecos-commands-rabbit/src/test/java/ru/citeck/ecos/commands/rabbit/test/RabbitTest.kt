@@ -1,9 +1,9 @@
 package ru.citeck.ecos.commands.rabbit.test
 
-import com.fasterxml.jackson.databind.node.NullNode
 import com.github.fridujo.rabbitmq.mock.MockConnectionFactory
 import com.rabbitmq.client.Channel
 import com.rabbitmq.client.ConnectionFactory
+import ecos.com.fasterxml.jackson210.databind.node.NullNode
 import org.junit.jupiter.api.Test
 import ru.citeck.ecos.commands.*
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
@@ -80,7 +80,7 @@ class RabbitTest {
             targetApp = "unknown",
             type = ADD_NEW_ELEM_TYPE,
             data = command
-        ).get()
+        )
     }
 
     inner class AddElementExecutor : CommandExecutor<AddElementCommand> {

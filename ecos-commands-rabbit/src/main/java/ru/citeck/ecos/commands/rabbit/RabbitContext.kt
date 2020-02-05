@@ -13,6 +13,7 @@ import ru.citeck.ecos.commands.utils.ErrorUtils
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.collections.HashMap
+import kotlin.reflect.KClass
 
 class RabbitContext(
     private val channel: Channel,
@@ -31,7 +32,7 @@ class RabbitContext(
         private const val ERR_QUEUE = "commands.%s.err"
         private const val RES_QUEUE = "commands.%s.res.%s"
 
-        private const val DATA_TYPE_HEADER = "DATA_TYPE"
+        private const val SYSTEM_BYTES_COUNT = 16
     }
 
     private val appComQueue = COM_QUEUE.format(properties.appName)
@@ -100,16 +101,12 @@ class RabbitContext(
     }
 
     private fun handleResultMqMessage(message: Delivery) {
-
-        val type = message.properties.headers[DATA_TYPE_HEADER] as String
-        val result = EcomObjUtils.fromBytes(message.body, EcomObjUtils.DataType.valueOf(type), CommandResultDto::class)
-        onResult.invoke(result)
+        onResult.invoke(parseMsg(message.body, CommandResultDto::class))
     }
 
     private fun handleCommandMqMessage(message: Delivery) {
 
-        val type = message.properties.headers[DATA_TYPE_HEADER] as String
-        val command = EcomObjUtils.fromBytes(message.body, EcomObjUtils.DataType.valueOf(type), CommandDto::class)
+        val command = parseMsg(message.body, CommandDto::class)
         val result = onCommand.invoke(command)
 
         val resQueue = getResQueueId(command.sourceApp, command.sourceAppId)
@@ -124,22 +121,21 @@ class RabbitContext(
                            dataType: EcomObjUtils.DataType? = null,
                            props: AMQP.BasicProperties = AMQP.BasicProperties.Builder().build()) {
 
-        val publishProps = if (dataType != null) {
-            val headers = HashMap<String, Any>()
-            if (props.headers != null) {
-                headers.putAll(props.headers)
-            }
-            headers[DATA_TYPE_HEADER] = dataType.toString()
-            props.builder().headers(headers).build()
+
+        val bytesToSend = if (dataType != null) {
+            val bytes = ByteArray(body.size + SYSTEM_BYTES_COUNT)
+            System.arraycopy(body, 0, bytes, SYSTEM_BYTES_COUNT, body.size)
+            bytes[0] = dataType.ordinal.toByte()
+            bytes
         } else {
-            props
+            body
         }
 
         if (!declaredQueues.contains(queue)) {
             declareQueue(queue, durable)
         }
 
-        channel.basicPublish(COM_EXCHANGE, queue, publishProps, body)
+        channel.basicPublish(COM_EXCHANGE, queue, props, bytesToSend)
     }
 
     private fun exchangeDeclare() {
@@ -174,5 +170,15 @@ class RabbitContext(
     private fun getResQueueId(appName: String, appId: String) : String {
         val normInstanceId = appId.replace("[^a-zA-Z_-]", "_")
         return RES_QUEUE.format(appName, normInstanceId)
+    }
+
+    private fun <T: Any> parseMsg(data: ByteArray, type: KClass<T>) : T {
+
+        val content = ByteArray(data.size - SYSTEM_BYTES_COUNT)
+        System.arraycopy(data, SYSTEM_BYTES_COUNT, content, 0, content.size)
+
+        val dataType = EcomObjUtils.DataType.values()[data[0].toInt()]
+
+        return EcomObjUtils.fromBytes(content, dataType, type)
     }
 }

@@ -12,5 +12,5 @@ fun <T> CommandResultDto.getResultData(type: Class<T>) : T? {
 }
 
 fun <T> CommandResultDto.getCommandData(type: Class<T>) : T? {
-    return EcomObjUtils.mapper.treeToValue(this.command.data, type)
+    return EcomObjUtils.mapper.treeToValue(this.command.body, type)
 }

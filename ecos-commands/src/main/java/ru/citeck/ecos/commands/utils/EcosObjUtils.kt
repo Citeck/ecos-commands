@@ -1,8 +1,8 @@
 package ru.citeck.ecos.commands.utils
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.KotlinModule
+import ecos.com.fasterxml.jackson210.databind.ObjectMapper
+import ecos.com.fasterxml.jackson210.datatype.jsr310.JavaTimeModule
+import ecos.com.fasterxml.jackson210.module.kotlin.KotlinModule
 import kotlin.reflect.KClass
 
 
@@ -30,6 +30,7 @@ object EcomObjUtils {
         val dataType: DataType
     )
 
+    // Do not change an order
     enum class DataType {
         JSON_TEXT
     }

@@ -1,7 +1,7 @@
 package ru.citeck.ecos.commands.dto
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.node.MissingNode
+import ecos.com.fasterxml.jackson210.databind.JsonNode
+import ecos.com.fasterxml.jackson210.databind.node.NullNode
 import java.time.Instant
 
 data class CommandResultDto(
@@ -13,6 +13,6 @@ data class CommandResultDto(
 
     val command: CommandDto,
 
-    val result: JsonNode = MissingNode.getInstance(),
+    val result: JsonNode = NullNode.getInstance(),
     val errors: List<ErrorDto> = emptyList()
 )
