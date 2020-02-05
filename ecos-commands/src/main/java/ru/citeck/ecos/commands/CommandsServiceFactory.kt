@@ -9,14 +9,14 @@ open class CommandsServiceFactory {
 
     val commandsService by lazy { createCommandsService() }
     val remoteCommandsService by lazy { createRemoteCommandsService() }
-    val properties by lazy { creatProperties() }
+    val properties by lazy { createProperties() }
     val transactionManager by lazy { createTransactionManager() }
 
     protected open fun createCommandsService() : CommandsService {
         return CommandsService(this)
     }
 
-    protected open fun creatProperties() : CommandsProperties {
+    protected open fun createProperties() : CommandsProperties {
         return CommandsProperties()
     }
 

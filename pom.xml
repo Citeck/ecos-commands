@@ -163,6 +163,7 @@
     <modules>
         <module>ecos-commands</module>
         <module>ecos-commands-rabbit</module>
+        <module>ecos-commands-spring</module>
     </modules>
 
     <repositories>

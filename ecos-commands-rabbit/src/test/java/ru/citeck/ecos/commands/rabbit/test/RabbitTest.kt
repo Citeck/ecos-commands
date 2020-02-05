@@ -112,7 +112,7 @@ class RabbitTest {
             remoteCommandsService
         }
 
-        override fun creatProperties(): CommandsProperties {
+        override fun createProperties(): CommandsProperties {
             val props = CommandsProperties()
             props.appName = APP_0_NAME
             props.appInstanceId = APP_0_ID
@@ -130,7 +130,7 @@ class RabbitTest {
             remoteCommandsService
         }
 
-        override fun creatProperties(): CommandsProperties {
+        override fun createProperties(): CommandsProperties {
             val props = CommandsProperties()
             props.appName = APP_1_NAME
             props.appInstanceId = APP_1_ID
