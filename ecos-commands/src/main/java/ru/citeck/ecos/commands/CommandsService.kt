@@ -1,8 +1,10 @@
 package ru.citeck.ecos.commands
 
 import ecos.com.fasterxml.jackson210.databind.JsonNode
+import ecos.com.fasterxml.jackson210.databind.node.ObjectNode
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import ru.citeck.ecos.commands.annotation.CommandType
 import ru.citeck.ecos.commands.context.CommandCtxManager
 import ru.citeck.ecos.commands.dto.CommandDto
 import ru.citeck.ecos.commands.dto.CommandResultDto
@@ -20,6 +22,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.collections.ArrayList
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
+import kotlin.reflect.full.findAnnotation
 
 class CommandsService(factory: CommandsServiceFactory) {
 
@@ -33,25 +36,40 @@ class CommandsService(factory: CommandsServiceFactory) {
 
     private val executors = ConcurrentHashMap<String, ExecutorInfo>()
 
-    fun execute(targetApp: String = props.appName,
-                user: String = CommandCtxManager.getCurrentUser(),
-                type: String,
-                data: Any? = null) : Future<CommandResultDto> {
 
-        return execute(CommandDto(
+    fun execute(command: Any, transaction: TransactionType = TransactionType.REQUIRED) : Future<CommandResultDto> {
+        return execute(props.appName, command, transaction)
+    }
+
+    fun execute(targetApp: String,
+                command: Any,
+                transaction: TransactionType = TransactionType.REQUIRED) : Future<CommandResultDto> {
+
+        val body = EcomObjUtils.mapper.valueToTree<ObjectNode>(command)
+        return execute(targetApp, needCommandType(command), body, transaction)
+    }
+
+
+    fun execute(targetApp: String,
+                type: String,
+                body: ObjectNode,
+                transaction: TransactionType = TransactionType.REQUIRED) : Future<CommandResultDto> {
+
+        return executeCommand(CommandDto(
             id = UUID.randomUUID().toString(),
             tenant = CommandCtxManager.getCurrentTenant(),
             targetApp = targetApp,
             time = Instant.now(),
-            user = user,
+            user = CommandCtxManager.getCurrentUser(),
             sourceApp = props.appName,
             sourceAppId = props.appInstanceId,
             type = type,
-            body = EcomObjUtils.mapper.valueToTree(data)
+            body = body,
+            transaction = transaction
         ))
     }
 
-    fun execute(command: CommandDto) : Future<CommandResultDto> {
+    fun executeCommand(command: CommandDto) : Future<CommandResultDto> {
 
         log.info("Command received: $command")
 
@@ -106,6 +124,15 @@ class CommandsService(factory: CommandsServiceFactory) {
             val future = remote!!.execute(command)
             return CompletableFuture.supplyAsync { future.get(props.commandTimeoutMs, TimeUnit.MILLISECONDS) }
         }
+    }
+
+    private fun needCommandType(command: Any) : String {
+        return getCommandType(command) ?:
+            throw RuntimeException("Command type is undefined for type ${command::class}. See CommandType annotation")
+    }
+
+    fun getCommandType(command: Any) : String? {
+        return (command::class.findAnnotation<CommandType>())?.value
     }
 
     fun <T : Any?> addExecutor(executor: CommandExecutor<T>) {

@@ -41,7 +41,7 @@ class RabbitCommandsService(
         if (command.targetApp != properties.appName) {
             throw RuntimeException("Incorrect target app name '${command.targetApp}'. Expected: ${properties.appName}")
         }
-        return commandsService.execute(command).get(properties.commandTimeoutMs, TimeUnit.MILLISECONDS)
+        return commandsService.executeCommand(command).get(properties.commandTimeoutMs, TimeUnit.MILLISECONDS)
     }
 
     override fun execute(command: CommandDto): Future<CommandResultDto> {

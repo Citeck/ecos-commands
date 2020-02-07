@@ -6,6 +6,7 @@ import com.rabbitmq.client.ConnectionFactory
 import ecos.com.fasterxml.jackson210.databind.node.NullNode
 import org.junit.jupiter.api.Test
 import ru.citeck.ecos.commands.*
+import ru.citeck.ecos.commands.annotation.CommandType
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
 import java.lang.RuntimeException
@@ -51,8 +52,7 @@ class RabbitTest {
 
         val resFuture = app0.commandsService.execute(
             targetApp = APP_1_NAME,
-            type = ADD_NEW_ELEM_TYPE,
-            data = command
+            command = command
         )
         val result = resFuture.get()
         val resultObj = result.getResultData(CommandAddResult::class.java)
@@ -67,8 +67,7 @@ class RabbitTest {
 
         val exRes = app0.commandsService.execute(
             targetApp = APP_1_NAME,
-            type = ADD_NEW_ELEM_TYPE,
-            data = AddElementCommand(EX_TEST_ELEM)
+            command = AddElementCommand(EX_TEST_ELEM)
         ).get(1, TimeUnit.SECONDS)
 
         assertEquals(1, exRes.errors.size)
@@ -78,8 +77,7 @@ class RabbitTest {
 
         app0.commandsService.execute(
             targetApp = "unknown",
-            type = ADD_NEW_ELEM_TYPE,
-            data = command
+            command = command
         )
     }
 
@@ -102,6 +100,7 @@ class RabbitTest {
         val value: String
     )
 
+    @CommandType(ADD_NEW_ELEM_TYPE)
     data class AddElementCommand(
         val element: String
     )

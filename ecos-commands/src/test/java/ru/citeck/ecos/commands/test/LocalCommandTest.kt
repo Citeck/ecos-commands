@@ -3,6 +3,7 @@ package ru.citeck.ecos.commands.test
 import ecos.com.fasterxml.jackson210.databind.node.NullNode
 import org.junit.jupiter.api.Test
 import ru.citeck.ecos.commands.*
+import ru.citeck.ecos.commands.annotation.CommandType
 import java.lang.RuntimeException
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
@@ -31,10 +32,7 @@ class LocalCommandTest {
         val testElem = "test-elem"
         val command = AddElementCommand(testElem)
 
-        val resFuture = commandsService.execute(
-            type = ADD_NEW_ELEM_TYPE,
-            data = command
-        )
+        val resFuture = commandsService.execute(command)
         val result = resFuture.get()
         val resultObj = result.getResultData(CommandAddResult::class.java)
 
@@ -46,10 +44,7 @@ class LocalCommandTest {
         val commandFromResult = result.getCommandData(AddElementCommand::class.java)
         assertEquals(commandFromResult, command)
 
-        val exRes = commandsService.execute(
-            type = ADD_NEW_ELEM_TYPE,
-            data = AddElementCommand(EX_TEST_ELEM)
-        ).get(1, TimeUnit.SECONDS)
+        val exRes = commandsService.execute(AddElementCommand(EX_TEST_ELEM)).get(1, TimeUnit.SECONDS)
 
         assertEquals(1, exRes.errors.size)
         assertEquals(EX_TEST_MSG, exRes.errors[0].message)
@@ -76,6 +71,7 @@ class LocalCommandTest {
         val value: String
     )
 
+    @CommandType(ADD_NEW_ELEM_TYPE)
     data class AddElementCommand(
         val element: String
     )
