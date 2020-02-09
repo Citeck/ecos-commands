@@ -36,24 +36,36 @@ class CommandsService(factory: CommandsServiceFactory) {
 
     private val executors = ConcurrentHashMap<String, ExecutorInfo>()
 
-
     fun execute(command: Any, transaction: TransactionType = TransactionType.REQUIRED) : Future<CommandResultDto> {
         return execute(props.appName, command, transaction)
     }
 
     fun execute(targetApp: String,
+                command: Any) : Future<CommandResultDto> {
+
+        val body = EcomObjUtils.mapper.valueToTree<ObjectNode>(command)
+        return execute(targetApp, needCommandType(command), body, TransactionType.REQUIRED)
+    }
+
+    fun execute(targetApp: String,
                 command: Any,
-                transaction: TransactionType = TransactionType.REQUIRED) : Future<CommandResultDto> {
+                transaction: TransactionType) : Future<CommandResultDto> {
 
         val body = EcomObjUtils.mapper.valueToTree<ObjectNode>(command)
         return execute(targetApp, needCommandType(command), body, transaction)
     }
 
+    fun execute(targetApp: String,
+                type: String,
+                body: ObjectNode) : Future<CommandResultDto> {
+
+        return execute(targetApp, type, body, TransactionType.REQUIRED)
+    }
 
     fun execute(targetApp: String,
                 type: String,
                 body: ObjectNode,
-                transaction: TransactionType = TransactionType.REQUIRED) : Future<CommandResultDto> {
+                transaction: TransactionType) : Future<CommandResultDto> {
 
         return executeCommand(CommandDto(
             id = UUID.randomUUID().toString(),
