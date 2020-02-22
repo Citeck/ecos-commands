@@ -2,8 +2,7 @@ package ru.citeck.ecos.commands
 
 import ecos.com.fasterxml.jackson210.databind.JsonNode
 import ecos.com.fasterxml.jackson210.databind.node.ObjectNode
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import mu.KotlinLogging
 import ru.citeck.ecos.commands.annotation.CommandType
 import ru.citeck.ecos.commands.context.CommandCtxManager
 import ru.citeck.ecos.commands.dto.CommandDto
@@ -24,11 +23,9 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.full.findAnnotation
 
-class CommandsService(factory: CommandsServiceFactory) {
+val log = KotlinLogging.logger {}
 
-    companion object {
-        val log: Logger = LoggerFactory.getLogger(CommandsService::class.java)
-    }
+class CommandsService(factory: CommandsServiceFactory) {
 
     private val props = factory.properties
     private val remote by lazy { factory.remoteCommandsService }
@@ -36,15 +33,22 @@ class CommandsService(factory: CommandsServiceFactory) {
 
     private val executors = ConcurrentHashMap<String, ExecutorInfo>()
 
-    fun execute(command: Any, transaction: TransactionType = TransactionType.REQUIRED) : Future<CommandResultDto> {
-        return execute(props.appName, command, transaction)
+    fun executeSync(command: Any, transaction: TransactionType = TransactionType.REQUIRED) : CommandResultDto {
+        return execute(props.appName, command, transaction).get(props.commandTimeoutMs, TimeUnit.MILLISECONDS)
     }
 
-    fun execute(targetApp: String,
-                command: Any) : Future<CommandResultDto> {
+    fun executeSync(targetApp: String, command: Any) : CommandResultDto {
+        return execute(targetApp, command).get(props.commandTimeoutMs, TimeUnit.MILLISECONDS)
+    }
+
+    fun execute(targetApp: String, command: Any) : Future<CommandResultDto> {
 
         val body = EcomObjUtils.mapper.valueToTree<ObjectNode>(command)
         return execute(targetApp, needCommandType(command), body, TransactionType.REQUIRED)
+    }
+
+    fun executeSync(targetApp: String, command: Any, transaction: TransactionType) : CommandResultDto {
+        return execute(targetApp, command, transaction).get(props.commandTimeoutMs, TimeUnit.MILLISECONDS)
     }
 
     fun execute(targetApp: String,
@@ -55,11 +59,26 @@ class CommandsService(factory: CommandsServiceFactory) {
         return execute(targetApp, needCommandType(command), body, transaction)
     }
 
+    fun executeSync(targetApp: String,
+                    type: String,
+                    body: ObjectNode) : CommandResultDto {
+
+        return execute(targetApp, type, body).get(props.commandTimeoutMs, TimeUnit.MILLISECONDS)
+    }
+
     fun execute(targetApp: String,
                 type: String,
                 body: ObjectNode) : Future<CommandResultDto> {
 
         return execute(targetApp, type, body, TransactionType.REQUIRED)
+    }
+
+    fun executeSync(targetApp: String,
+                    type: String,
+                    body: ObjectNode,
+                    transaction: TransactionType) : CommandResultDto {
+
+        return execute(targetApp, type, body, transaction).get(props.commandTimeoutMs, TimeUnit.MILLISECONDS)
     }
 
     fun execute(targetApp: String,
@@ -89,7 +108,7 @@ class CommandsService(factory: CommandsServiceFactory) {
 
             log.info("Execute command ${command.id} as local")
 
-            val executorInfo = executors[command.type] ?: throw ExecutorNotFound()
+            val executorInfo = executors[command.type] ?: throw ExecutorNotFound(command.type)
 
             var executorCommand: Any? = null
             if (executorInfo.commandType.classifier !== Any::class) {
@@ -158,7 +177,13 @@ class CommandsService(factory: CommandsServiceFactory) {
         @Suppress("UNCHECKED_CAST")
         executor as CommandExecutor<Any?>
 
-        executors[executor.getType()] = ExecutorInfo(executor, type)
+        val comType = (type.classifier as? KClass<*>)?.findAnnotation<CommandType>()?.value
+        if (comType?.isNotBlank() == true) {
+            executors[comType] = ExecutorInfo(executor, type)
+        } else {
+            log.warn { "Command type is undefined. Please add CommandType annotation to CommandDto. " +
+                "Command executor will be ignored: ${executor::class.qualifiedName}" }
+        }
     }
 
     data class ExecutorInfo (

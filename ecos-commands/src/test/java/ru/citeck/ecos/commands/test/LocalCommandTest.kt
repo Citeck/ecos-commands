@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test
 import ru.citeck.ecos.commands.*
 import ru.citeck.ecos.commands.annotation.CommandType
 import java.lang.RuntimeException
-import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -32,8 +31,7 @@ class LocalCommandTest {
         val testElem = "test-elem"
         val command = AddElementCommand(testElem)
 
-        val resFuture = commandsService.execute(command)
-        val result = resFuture.get()
+        val result = commandsService.executeSync(command)
         val resultObj = result.getResultData(CommandAddResult::class.java)
 
         assertEquals(testElem, resultObj!!.value)
@@ -44,7 +42,7 @@ class LocalCommandTest {
         val commandFromResult = result.getCommandData(AddElementCommand::class.java)
         assertEquals(commandFromResult, command)
 
-        val exRes = commandsService.execute(AddElementCommand(EX_TEST_ELEM)).get(1, TimeUnit.SECONDS)
+        val exRes = commandsService.executeSync(AddElementCommand(EX_TEST_ELEM))
 
         assertEquals(1, exRes.errors.size)
         assertEquals(EX_TEST_MSG, exRes.errors[0].message)
@@ -60,10 +58,6 @@ class LocalCommandTest {
             }
             elements.add(command.element)
             return CommandAddResult(command.element)
-        }
-
-        override fun getType(): String {
-            return ADD_NEW_ELEM_TYPE
         }
     }
 

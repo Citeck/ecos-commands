@@ -90,10 +90,6 @@ class RabbitTest {
             elements.add(command.element)
             return CommandAddResult(command.element)
         }
-
-        override fun getType(): String {
-            return ADD_NEW_ELEM_TYPE
-        }
     }
 
     data class CommandAddResult(
