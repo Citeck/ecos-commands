@@ -3,7 +3,6 @@ package ru.citeck.ecos.commands.rabbit.test
 import com.github.fridujo.rabbitmq.mock.MockConnectionFactory
 import com.rabbitmq.client.Channel
 import com.rabbitmq.client.ConnectionFactory
-import ecos.com.fasterxml.jackson210.databind.node.NullNode
 import org.junit.jupiter.api.Test
 import ru.citeck.ecos.commands.*
 import ru.citeck.ecos.commands.annotation.CommandType
@@ -12,6 +11,7 @@ import ru.citeck.ecos.commands.remote.RemoteCommandsService
 import java.lang.RuntimeException
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class RabbitTest {
@@ -50,10 +50,10 @@ class RabbitTest {
         val testElem = "test-elem"
         val command = AddElementCommand(testElem)
 
-        val resFuture = app0.commandsService.execute(
-            targetApp = APP_1_NAME,
-            command = command
-        )
+        val resFuture = app0.commandsService.execute {
+            targetApp = APP_1_NAME
+            body = command
+        }
         val result = resFuture.get()
         val resultObj = result.getResultData(CommandAddResult::class.java)
 
@@ -65,20 +65,20 @@ class RabbitTest {
         val commandFromResult = result.getCommandData(AddElementCommand::class.java)
         assertEquals(commandFromResult, command)
 
-        val exRes = app0.commandsService.execute(
-            targetApp = APP_1_NAME,
-            command = AddElementCommand(EX_TEST_ELEM)
-        ).get(1, TimeUnit.SECONDS)
+        val exRes = app0.commandsService.execute {
+            targetApp = APP_1_NAME
+            body = AddElementCommand(EX_TEST_ELEM)
+        }.get(1, TimeUnit.SECONDS)
 
         assertEquals(1, exRes.errors.size)
         assertEquals(EX_TEST_MSG, exRes.errors[0].message)
         assertEquals("RuntimeException", exRes.errors[0].type)
-        assertEquals(NullNode.getInstance(), exRes.result)
+        assertNull(exRes.result)
 
-        app0.commandsService.execute(
-            targetApp = "unknown",
-            command = command
-        )
+        app0.commandsService.execute {
+            targetApp = "unknown"
+            body = command
+        }
     }
 
     inner class AddElementExecutor : CommandExecutor<AddElementCommand> {

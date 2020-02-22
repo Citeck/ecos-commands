@@ -1,18 +1,14 @@
 package ru.citeck.ecos.commands.dto
 
-import ecos.com.fasterxml.jackson210.databind.JsonNode
-import ecos.com.fasterxml.jackson210.databind.node.NullNode
-import java.time.Instant
-
 data class CommandResultDto(
 
     val id: String,
 
-    val started: Instant,
-    val completed: Instant,
+    val started: Long,
+    val completed: Long,
 
     val command: CommandDto,
 
-    val result: JsonNode = NullNode.getInstance(),
+    val result: Any?,
     val errors: List<ErrorDto> = emptyList()
 )

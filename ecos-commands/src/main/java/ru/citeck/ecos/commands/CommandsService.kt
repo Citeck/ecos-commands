@@ -1,16 +1,16 @@
 package ru.citeck.ecos.commands
 
-import ecos.com.fasterxml.jackson210.databind.JsonNode
-import ecos.com.fasterxml.jackson210.databind.node.ObjectNode
 import mu.KotlinLogging
 import ru.citeck.ecos.commands.annotation.CommandType
 import ru.citeck.ecos.commands.context.CommandCtxManager
+import ru.citeck.ecos.commands.dto.CommandConfig
 import ru.citeck.ecos.commands.dto.CommandDto
 import ru.citeck.ecos.commands.dto.CommandResultDto
 import ru.citeck.ecos.commands.dto.ErrorDto
 import ru.citeck.ecos.commands.exceptions.ExecutorNotFound
 import ru.citeck.ecos.commands.utils.EcomObjUtils
 import ru.citeck.ecos.commands.utils.ErrorUtils
+import java.time.Duration
 import java.time.Instant
 import java.util.*
 import java.util.concurrent.Callable
@@ -25,6 +25,21 @@ import kotlin.reflect.full.findAnnotation
 
 val log = KotlinLogging.logger {}
 
+private fun needCommandType(command: Any?) : String {
+    if (command == null) {
+        throw RuntimeException("Command type is undefined for null body")
+    }
+    return getCommandType(command) ?:
+        throw RuntimeException("Command type is undefined for type ${command::class}. See CommandType annotation")
+}
+
+fun getCommandType(command: Any?) : String? {
+    if (command == null) {
+        return null
+    }
+    return (command::class.findAnnotation<CommandType>())?.value
+}
+
 class CommandsService(factory: CommandsServiceFactory) {
 
     private val props = factory.properties
@@ -33,116 +48,75 @@ class CommandsService(factory: CommandsServiceFactory) {
 
     private val executors = ConcurrentHashMap<String, ExecutorInfo>()
 
-    fun executeSync(command: Any, transaction: TransactionType = TransactionType.REQUIRED) : CommandResultDto {
-        return execute(props.appName, command, transaction).get(props.commandTimeoutMs, TimeUnit.MILLISECONDS)
+    fun executeSync(command: Any) : CommandResultDto {
+        return executeSync {
+            body = command
+            type = needCommandType(command)
+        }
     }
 
-    fun executeSync(targetApp: String, command: Any) : CommandResultDto {
-        return execute(targetApp, command).get(props.commandTimeoutMs, TimeUnit.MILLISECONDS)
+    fun executeSync(block: CommandBuilder.() -> Unit) : CommandResultDto {
+        return execute(block).get(props.commandTimeoutMs, TimeUnit.MILLISECONDS)
     }
 
-    fun execute(targetApp: String, command: Any) : Future<CommandResultDto> {
-
-        val body = EcomObjUtils.mapper.valueToTree<ObjectNode>(command)
-        return execute(targetApp, needCommandType(command), body, TransactionType.REQUIRED)
+    fun execute(command: Any) : Future<CommandResultDto> {
+        return execute {
+            body = command
+            type = needCommandType(command)
+        }
     }
 
-    fun executeSync(targetApp: String, command: Any, transaction: TransactionType) : CommandResultDto {
-        return execute(targetApp, command, transaction).get(props.commandTimeoutMs, TimeUnit.MILLISECONDS)
+    fun execute(block: CommandBuilder.() -> Unit) : Future<CommandResultDto> {
+        val (command, config) = CommandBuilder(props).apply(block).build()
+        return execute(command, config)
     }
 
-    fun execute(targetApp: String,
-                command: Any,
-                transaction: TransactionType) : Future<CommandResultDto> {
+    fun executeLocal(command: CommandDto) : CommandResultDto {
 
-        val body = EcomObjUtils.mapper.valueToTree<ObjectNode>(command)
-        return execute(targetApp, needCommandType(command), body, transaction)
-    }
+        log.info("Execute command ${command.id} as local")
 
-    fun executeSync(targetApp: String,
-                    type: String,
-                    body: ObjectNode) : CommandResultDto {
+        val executorInfo = executors[command.type] ?: throw ExecutorNotFound(command.type)
 
-        return execute(targetApp, type, body).get(props.commandTimeoutMs, TimeUnit.MILLISECONDS)
-    }
+        var executorCommand: Any? = null
+        if (executorInfo.commandType.classifier !== Any::class) {
+            @Suppress("UNCHECKED_CAST")
+            val commandClass = executorInfo.commandType.classifier as KClass<Any>
+            executorCommand = EcomObjUtils.mapper.convertValue(command.body, commandClass.java)
+        }
 
-    fun execute(targetApp: String,
-                type: String,
-                body: ObjectNode) : Future<CommandResultDto> {
+        val started = Instant.now()
 
-        return execute(targetApp, type, body, TransactionType.REQUIRED)
-    }
+        val errors = ArrayList<ErrorDto>()
 
-    fun executeSync(targetApp: String,
-                    type: String,
-                    body: ObjectNode,
-                    transaction: TransactionType) : CommandResultDto {
+        val resultObj : Any? = try {
+            txnManager.doInTransaction(Callable {
+                CommandCtxManager.runWith(command.user, command.tenant, Callable {
+                    executorInfo.executor.execute(executorCommand)
+                })
+            })
+        } catch (e : Exception) {
+            log.error("Command execution error", e)
+            errors.add(ErrorUtils.convertException(e))
+            null
+        }
 
-        return execute(targetApp, type, body, transaction).get(props.commandTimeoutMs, TimeUnit.MILLISECONDS)
-    }
-
-    fun execute(targetApp: String,
-                type: String,
-                body: ObjectNode,
-                transaction: TransactionType) : Future<CommandResultDto> {
-
-        return executeCommand(CommandDto(
+        return CommandResultDto(
             id = UUID.randomUUID().toString(),
-            tenant = CommandCtxManager.getCurrentTenant(),
-            targetApp = targetApp,
-            time = Instant.now(),
-            user = CommandCtxManager.getCurrentUser(),
-            sourceApp = props.appName,
-            sourceAppId = props.appInstanceId,
-            type = type,
-            body = body,
-            transaction = transaction
-        ))
+            started = started.toEpochMilli(),
+            completed = Instant.now().toEpochMilli(),
+            command = command,
+            result = resultObj,
+            errors = errors
+        )
     }
 
-    fun executeCommand(command: CommandDto) : Future<CommandResultDto> {
+    fun execute(command: CommandDto, config: CommandConfig) : Future<CommandResultDto> {
 
         log.info("Command received: $command")
 
-        if (command.targetApp == props.appName) {
+        return if (command.targetApp == props.appName) {
 
-            log.info("Execute command ${command.id} as local")
-
-            val executorInfo = executors[command.type] ?: throw ExecutorNotFound(command.type)
-
-            var executorCommand: Any? = null
-            if (executorInfo.commandType.classifier !== Any::class) {
-                @Suppress("UNCHECKED_CAST")
-                val commandClass = executorInfo.commandType.classifier as KClass<Any>
-                executorCommand = EcomObjUtils.mapper.treeToValue(command.body, commandClass.java)
-            }
-
-            val started = Instant.now()
-
-            val errors = ArrayList<ErrorDto>()
-
-            val resultObj : Any? = try {
-                txnManager.doInTransaction(Callable {
-                    CommandCtxManager.runWith(command.user, command.tenant, Callable {
-                        executorInfo.executor.execute(executorCommand)
-                    })
-                })
-            } catch (e : Exception) {
-                log.error("Command execution error", e)
-                errors.add(ErrorUtils.convertException(e))
-                null
-            }
-
-            val result = CommandResultDto(
-                id = UUID.randomUUID().toString(),
-                started = started,
-                completed = Instant.now(),
-                command = command,
-                result = EcomObjUtils.mapper.valueToTree<JsonNode>(resultObj),
-                errors = errors
-            )
-
-            return CompletableFuture.completedFuture(result)
+            CompletableFuture.completedFuture(executeLocal(command))
 
         } else {
 
@@ -152,18 +126,9 @@ class CommandsService(factory: CommandsServiceFactory) {
                 throw IllegalStateException("Remote commands service is not defined!")
             }
 
-            val future = remote!!.execute(command)
-            return CompletableFuture.supplyAsync { future.get(props.commandTimeoutMs, TimeUnit.MILLISECONDS) }
+            val future = remote!!.execute(command, config)
+            CompletableFuture.supplyAsync { future.get(props.commandTimeoutMs, TimeUnit.MILLISECONDS) }
         }
-    }
-
-    private fun needCommandType(command: Any) : String {
-        return getCommandType(command) ?:
-            throw RuntimeException("Command type is undefined for type ${command::class}. See CommandType annotation")
-    }
-
-    fun getCommandType(command: Any) : String? {
-        return (command::class.findAnnotation<CommandType>())?.value
     }
 
     fun <T : Any?> addExecutor(executor: CommandExecutor<T>) {
@@ -190,4 +155,38 @@ class CommandsService(factory: CommandsServiceFactory) {
         val executor: CommandExecutor<Any?>,
         val commandType: KType
     )
+
+    class CommandBuilder(props: CommandsProperties) {
+
+        var id: String = UUID.randomUUID().toString()
+        var tenant: String = ""
+        var time: Instant = Instant.now()
+        var user: String = CommandCtxManager.getCurrentUser()
+
+        var sourceApp: String = props.appName
+        var sourceAppId: String = props.appInstanceId
+        var transaction: TransactionType = TransactionType.REQUIRED
+        var ttl: Duration = Duration.ofMillis(props.commandTimeoutMs)
+
+        var targetApp: String = props.appName
+        var type: String? = null
+        var body: Any? = null
+
+        fun build() : Pair<CommandDto, CommandConfig> {
+            return Pair(CommandDto(
+                id = id,
+                tenant = tenant,
+                time = time.toEpochMilli(),
+                user = user,
+                sourceApp = sourceApp,
+                sourceAppId = sourceAppId,
+                transaction = transaction,
+                targetApp = targetApp,
+                type = type ?: needCommandType(body),
+                body = body
+            ), CommandConfig(
+                ttl = ttl
+            ))
+        }
+    }
 }

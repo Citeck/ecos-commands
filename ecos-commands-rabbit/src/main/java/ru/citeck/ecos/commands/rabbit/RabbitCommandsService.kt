@@ -3,6 +3,7 @@ package ru.citeck.ecos.commands.rabbit
 import com.rabbitmq.client.Channel
 import ru.citeck.ecos.commands.CommandsService
 import ru.citeck.ecos.commands.CommandsServiceFactory
+import ru.citeck.ecos.commands.dto.CommandConfig
 import ru.citeck.ecos.commands.dto.CommandDto
 import ru.citeck.ecos.commands.dto.CommandResultDto
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
@@ -11,7 +12,6 @@ import java.lang.RuntimeException
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Future
-import java.util.concurrent.TimeUnit
 
 class RabbitCommandsService(
     factory: CommandsServiceFactory,
@@ -41,14 +41,14 @@ class RabbitCommandsService(
         if (command.targetApp != properties.appName) {
             throw RuntimeException("Incorrect target app name '${command.targetApp}'. Expected: ${properties.appName}")
         }
-        return commandsService.executeCommand(command).get(properties.commandTimeoutMs, TimeUnit.MILLISECONDS)
+        return commandsService.executeLocal(command);
     }
 
-    override fun execute(command: CommandDto): Future<CommandResultDto> {
+    override fun execute(command: CommandDto, config: CommandConfig): Future<CommandResultDto> {
         val future = CompletableFuture<CommandResultDto>()
         commands[command.id] = future
         try {
-            rabbitContext.sendCommand(command)
+            rabbitContext.sendCommand(command, config)
         } catch (e: Exception) {
             commands.remove(command.id)
             throw e

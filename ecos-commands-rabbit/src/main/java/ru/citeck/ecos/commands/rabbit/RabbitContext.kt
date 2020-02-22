@@ -6,6 +6,7 @@ import com.rabbitmq.client.Channel
 import com.rabbitmq.client.Delivery
 import org.slf4j.LoggerFactory
 import ru.citeck.ecos.commands.CommandsProperties
+import ru.citeck.ecos.commands.dto.CommandConfig
 import ru.citeck.ecos.commands.dto.CommandDto
 import ru.citeck.ecos.commands.dto.CommandResultDto
 import ru.citeck.ecos.commands.utils.EcomObjUtils
@@ -80,12 +81,24 @@ class RabbitContext(
         )
     }
 
-    fun sendCommand(command: CommandDto) {
+    fun sendCommand(command: CommandDto, config: CommandConfig) {
 
         val commandData = EcomObjUtils.toBytes(command)
         val comQueue = COM_QUEUE.format(command.targetApp)
 
-        publishMsg(comQueue, true, commandData.bytes, commandData.dataType)
+        if (!config.ttl.isZero) {
+            publishMsg(
+                comQueue,
+                true,
+                commandData.bytes,
+                commandData.dataType,
+                AMQP.BasicProperties.Builder()
+                    .expiration(config.ttl.toMillis().toString())
+                    .build()
+            )
+        } else {
+            publishMsg(comQueue, true, commandData.bytes, commandData.dataType)
+        }
     }
 
     private fun toErrorQueue(message: Delivery, reason: Exception) {
