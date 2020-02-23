@@ -10,6 +10,7 @@ import ru.citeck.ecos.commands.dto.ErrorDto
 import ru.citeck.ecos.commands.exceptions.ExecutorNotFound
 import ru.citeck.ecos.commands.utils.EcomObjUtils
 import ru.citeck.ecos.commands.utils.ErrorUtils
+import ru.citeck.ecos.commons.json.Json
 import java.time.Duration
 import java.time.Instant
 import java.util.*
@@ -81,7 +82,7 @@ class CommandsService(factory: CommandsServiceFactory) {
         if (executorInfo.commandType.classifier !== Any::class) {
             @Suppress("UNCHECKED_CAST")
             val commandClass = executorInfo.commandType.classifier as KClass<Any>
-            executorCommand = EcomObjUtils.mapper.convertValue(command.body, commandClass.java)
+            executorCommand = Json.mapper.convert(command.body, commandClass.java)
         }
 
         val started = Instant.now()

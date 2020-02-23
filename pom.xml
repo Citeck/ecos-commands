@@ -20,6 +20,8 @@
         <slf4j.version>1.7.28</slf4j.version>
         <kotlin.version>1.3.61</kotlin.version>
         <kotlin.logging.version>1.7.8</kotlin.logging.version>
+
+        <ecos.commons.version>1.0.0</ecos.commons.version>
         <ecos.jackson.version>2.10.2.1</ecos.jackson.version>
 
     </properties>
@@ -100,6 +102,13 @@
             <groupId>ru.citeck.ecos</groupId>
             <artifactId>ecos-jackson</artifactId>
             <version>${ecos.jackson.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>ru.citeck.ecos.commons</groupId>
+            <artifactId>ecos-commons</artifactId>
+            <version>${ecos.commons.version}</version>
             <scope>provided</scope>
         </dependency>
 

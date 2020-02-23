@@ -11,6 +11,7 @@ import ru.citeck.ecos.commands.dto.CommandDto
 import ru.citeck.ecos.commands.dto.CommandResultDto
 import ru.citeck.ecos.commands.utils.EcomObjUtils
 import ru.citeck.ecos.commands.utils.ErrorUtils
+import ru.citeck.ecos.commons.json.Json
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.collections.HashMap
@@ -107,7 +108,7 @@ class RabbitContext(
 
         val errDto = ErrorUtils.convertException(reason)
         val headers = HashMap(message.properties.headers)
-        headers["ECOS_ERR"] = EcomObjUtils.mapper.writeValueAsString(errDto)
+        headers["ECOS_ERR"] = Json.mapper.toString(errDto)
 
         val props = message.properties.builder().headers(headers).build()
         publishMsg(appErrQueue, true, message.body, null, props)
