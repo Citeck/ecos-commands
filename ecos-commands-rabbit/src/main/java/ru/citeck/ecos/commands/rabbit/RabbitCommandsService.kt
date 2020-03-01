@@ -27,9 +27,9 @@ class RabbitCommandsService(
     init {
         rabbitContext = RabbitContext(
             channel,
-            factory.properties,
             { onCommandReceived(it) },
-            { onResultReceived(it) }
+            { onResultReceived(it) },
+            factory.properties
         )
     }
 
@@ -41,7 +41,7 @@ class RabbitCommandsService(
         if (command.targetApp != properties.appName) {
             throw RuntimeException("Incorrect target app name '${command.targetApp}'. Expected: ${properties.appName}")
         }
-        return commandsService.executeLocal(command);
+        return commandsService.executeLocal(command)
     }
 
     override fun execute(command: CommandDto, config: CommandConfig): Future<CommandResultDto> {

@@ -1,11 +1,11 @@
 package ru.citeck.ecos.commands.test
 
+import ecos.com.fasterxml.jackson210.databind.node.NullNode
 import org.junit.jupiter.api.Test
 import ru.citeck.ecos.commands.*
 import ru.citeck.ecos.commands.annotation.CommandType
 import java.lang.RuntimeException
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class LocalCommandTest {
@@ -47,7 +47,7 @@ class LocalCommandTest {
         assertEquals(1, exRes.errors.size)
         assertEquals(EX_TEST_MSG, exRes.errors[0].message)
         assertEquals("RuntimeException", exRes.errors[0].type)
-        assertNull(exRes.result)
+        assertEquals(NullNode.instance, exRes.result)
     }
 
     inner class AddElementExecutor : CommandExecutor<AddElementCommand> {

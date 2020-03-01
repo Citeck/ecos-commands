@@ -1,5 +1,6 @@
 package ru.citeck.ecos.commands.remote
 
+import ecos.com.fasterxml.jackson210.databind.node.NullNode
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import ru.citeck.ecos.commands.dto.CommandConfig
@@ -22,7 +23,7 @@ class NoopRemoteCommandsService : RemoteCommandsService {
         log.error("$errorMsg. Command: $command")
         return CompletableFuture.completedFuture(CommandResultDto(
             id = UUID.randomUUID().toString(),
-            result = null,
+            result = NullNode.instance,
             command = command,
             started = Instant.now().toEpochMilli(),
             completed = Instant.now().toEpochMilli(),

@@ -1,5 +1,8 @@
 package ru.citeck.ecos.commands.dto
 
+import ecos.com.fasterxml.jackson210.databind.JsonNode
+import ecos.com.fasterxml.jackson210.databind.node.NullNode
+
 data class CommandResultDto(
 
     val id: String,
@@ -9,6 +12,6 @@ data class CommandResultDto(
 
     val command: CommandDto,
 
-    val result: Any?,
+    val result: JsonNode = NullNode.instance,
     val errors: List<ErrorDto> = emptyList()
 )

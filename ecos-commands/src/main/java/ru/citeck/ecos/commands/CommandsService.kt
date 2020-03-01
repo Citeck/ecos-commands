@@ -8,7 +8,6 @@ import ru.citeck.ecos.commands.dto.CommandDto
 import ru.citeck.ecos.commands.dto.CommandResultDto
 import ru.citeck.ecos.commands.dto.ErrorDto
 import ru.citeck.ecos.commands.exceptions.ExecutorNotFound
-import ru.citeck.ecos.commands.utils.EcomObjUtils
 import ru.citeck.ecos.commands.utils.ErrorUtils
 import ru.citeck.ecos.commons.json.Json
 import java.time.Duration
@@ -34,7 +33,7 @@ private fun needCommandType(command: Any?) : String {
         throw RuntimeException("Command type is undefined for type ${command::class}. See CommandType annotation")
 }
 
-fun getCommandType(command: Any?) : String? {
+private fun getCommandType(command: Any?) : String? {
     if (command == null) {
         return null
     }
@@ -51,7 +50,7 @@ class CommandsService(factory: CommandsServiceFactory) {
 
     fun executeSync(command: Any) : CommandResultDto {
         return executeSync {
-            body = command
+            body = Json.mapper.toJson(command)
             type = needCommandType(command)
         }
     }
@@ -62,7 +61,7 @@ class CommandsService(factory: CommandsServiceFactory) {
 
     fun execute(command: Any) : Future<CommandResultDto> {
         return execute {
-            body = command
+            body = Json.mapper.toJson(command)
             type = needCommandType(command)
         }
     }
@@ -106,7 +105,7 @@ class CommandsService(factory: CommandsServiceFactory) {
             started = started.toEpochMilli(),
             completed = Instant.now().toEpochMilli(),
             command = command,
-            result = resultObj,
+            result = Json.mapper.toJson(resultObj),
             errors = errors
         )
     }
@@ -184,7 +183,7 @@ class CommandsService(factory: CommandsServiceFactory) {
                 transaction = transaction,
                 targetApp = targetApp,
                 type = type ?: needCommandType(body),
-                body = body
+                body = Json.mapper.toJson(body)
             ), CommandConfig(
                 ttl = ttl
             ))

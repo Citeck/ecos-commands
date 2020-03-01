@@ -4,24 +4,26 @@ import com.rabbitmq.client.AMQP
 import com.rabbitmq.client.BuiltinExchangeType
 import com.rabbitmq.client.Channel
 import com.rabbitmq.client.Delivery
+import ecos.com.fasterxml.jackson210.databind.node.NullNode
+import ecos.com.fasterxml.jackson210.dataformat.cbor.CBORFactory
 import org.slf4j.LoggerFactory
 import ru.citeck.ecos.commands.CommandsProperties
 import ru.citeck.ecos.commands.dto.CommandConfig
 import ru.citeck.ecos.commands.dto.CommandDto
 import ru.citeck.ecos.commands.dto.CommandResultDto
-import ru.citeck.ecos.commands.utils.EcomObjUtils
 import ru.citeck.ecos.commands.utils.ErrorUtils
 import ru.citeck.ecos.commons.json.Json
+import ru.citeck.ecos.commons.json.JsonOptions
+import java.io.ByteArrayOutputStream
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.collections.HashMap
-import kotlin.reflect.KClass
 
 class RabbitContext(
     private val channel: Channel,
-    properties: CommandsProperties,
     private val onCommand: (CommandDto) -> CommandResultDto,
-    private val onResult: (CommandResultDto) -> Unit
+    private val onResult: (CommandResultDto) -> Unit,
+    properties: CommandsProperties
 ) {
 
     companion object {
@@ -34,7 +36,9 @@ class RabbitContext(
         private const val ERR_QUEUE = "commands.%s.err"
         private const val RES_QUEUE = "commands.%s.res.%s"
 
-        private const val SYSTEM_BYTES_COUNT = 16
+        private val msgBodyMapper = Json.newMapper(JsonOptions.create {
+           setFactory(CBORFactory())
+        })
     }
 
     private val appComQueue = COM_QUEUE.format(properties.appName)
@@ -84,21 +88,20 @@ class RabbitContext(
 
     fun sendCommand(command: CommandDto, config: CommandConfig) {
 
-        val commandData = EcomObjUtils.toBytes(command)
+        val msgBody = toMsgBytes(command)
         val comQueue = COM_QUEUE.format(command.targetApp)
 
         if (!config.ttl.isZero) {
             publishMsg(
                 comQueue,
                 true,
-                commandData.bytes,
-                commandData.dataType,
+                msgBody,
                 AMQP.BasicProperties.Builder()
                     .expiration(config.ttl.toMillis().toString())
                     .build()
             )
         } else {
-            publishMsg(comQueue, true, commandData.bytes, commandData.dataType)
+            publishMsg(comQueue, true, msgBody)
         }
     }
 
@@ -111,45 +114,33 @@ class RabbitContext(
         headers["ECOS_ERR"] = Json.mapper.toString(errDto)
 
         val props = message.properties.builder().headers(headers).build()
-        publishMsg(appErrQueue, true, message.body, null, props)
+        publishMsg(appErrQueue, true, message.body, props)
     }
 
     private fun handleResultMqMessage(message: Delivery) {
-        onResult.invoke(parseMsg(message.body, CommandResultDto::class))
+        onResult(readComResult(message.body))
     }
 
     private fun handleCommandMqMessage(message: Delivery) {
 
-        val command = parseMsg(message.body, CommandDto::class)
+        val command = msgBodyMapper.read(message.body, CommandDto::class.java)!!
         val result = onCommand.invoke(command)
 
         val resQueue = getResQueueId(command.sourceApp, command.sourceAppId)
-        val data = EcomObjUtils.toBytes(result)
 
-        publishMsg(resQueue, false, data.bytes, data.dataType)
+        publishMsg(resQueue, false, toMsgBytes(result))
     }
 
     private fun publishMsg(queue: String,
                            durable: Boolean,
                            body: ByteArray,
-                           dataType: EcomObjUtils.DataType? = null,
                            props: AMQP.BasicProperties = AMQP.BasicProperties.Builder().build()) {
-
-
-        val bytesToSend = if (dataType != null) {
-            val bytes = ByteArray(body.size + SYSTEM_BYTES_COUNT)
-            System.arraycopy(body, 0, bytes, SYSTEM_BYTES_COUNT, body.size)
-            bytes[0] = dataType.ordinal.toByte()
-            bytes
-        } else {
-            body
-        }
 
         if (!declaredQueues.contains(queue)) {
             declareQueue(queue, durable)
         }
 
-        channel.basicPublish(COM_EXCHANGE, queue, props, bytesToSend)
+        channel.basicPublish(COM_EXCHANGE, queue, props, body)
     }
 
     private fun exchangeDeclare() {
@@ -186,13 +177,19 @@ class RabbitContext(
         return RES_QUEUE.format(appName, normInstanceId)
     }
 
-    private fun <T: Any> parseMsg(data: ByteArray, type: KClass<T>) : T {
+    private fun toMsgBytes(data: Any?) : ByteArray {
 
-        val content = ByteArray(data.size - SYSTEM_BYTES_COUNT)
-        System.arraycopy(data, SYSTEM_BYTES_COUNT, content, 0, content.size)
+        val baos = ByteArrayOutputStream()
 
-        val dataType = EcomObjUtils.DataType.values()[data[0].toInt()]
+        if (data != null) {
+            msgBodyMapper.write(baos, data)
+        } else {
+            msgBodyMapper.write(baos, NullNode.instance)
+        }
+        return baos.toByteArray()
+    }
 
-        return EcomObjUtils.fromBytes(content, dataType, type)
+    private fun readComResult(bytes: ByteArray) : CommandResultDto {
+        return msgBodyMapper.read(bytes, CommandResultDto::class.java)!!
     }
 }
