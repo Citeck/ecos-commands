@@ -14,10 +14,14 @@ import ru.citeck.ecos.commands.dto.CommandResultDto
 import ru.citeck.ecos.commands.utils.ErrorUtils
 import ru.citeck.ecos.commons.json.Json
 import ru.citeck.ecos.commons.json.JsonOptions
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import java.util.zip.GZIPInputStream
+import java.util.zip.GZIPOutputStream
 import kotlin.collections.HashMap
+import kotlin.reflect.KClass
 
 class RabbitContext(
     private val channel: Channel,
@@ -118,12 +122,12 @@ class RabbitContext(
     }
 
     private fun handleResultMqMessage(message: Delivery) {
-        onResult(readComResult(message.body))
+        onResult(fromMsgBytes(message.body, CommandResultDto::class))
     }
 
     private fun handleCommandMqMessage(message: Delivery) {
 
-        val command = msgBodyMapper.read(message.body, CommandDto::class.java)!!
+        val command = fromMsgBytes(message.body, CommandDto::class)
         val result = onCommand.invoke(command)
 
         val resQueue = getResQueueId(command.sourceApp, command.sourceAppId)
@@ -181,15 +185,20 @@ class RabbitContext(
 
         val baos = ByteArrayOutputStream()
 
-        if (data != null) {
-            msgBodyMapper.write(baos, data)
-        } else {
-            msgBodyMapper.write(baos, NullNode.instance)
+        GZIPOutputStream(baos).use {
+            if (data != null) {
+                msgBodyMapper.write(it, data)
+            } else {
+                msgBodyMapper.write(it, NullNode.instance)
+            }
         }
+
         return baos.toByteArray()
     }
 
-    private fun readComResult(bytes: ByteArray) : CommandResultDto {
-        return msgBodyMapper.read(bytes, CommandResultDto::class.java)!!
+    private fun <T : Any> fromMsgBytes(bytes: ByteArray, type: KClass<T>) : T {
+
+        val input = GZIPInputStream(ByteArrayInputStream(bytes))
+        return msgBodyMapper.read(input, type.java)!!
     }
 }
