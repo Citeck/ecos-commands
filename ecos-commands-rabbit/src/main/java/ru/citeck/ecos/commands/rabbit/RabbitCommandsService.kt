@@ -1,17 +1,18 @@
 package ru.citeck.ecos.commands.rabbit
 
 import com.rabbitmq.client.Channel
+import mu.KotlinLogging
 import ru.citeck.ecos.commands.CommandsService
 import ru.citeck.ecos.commands.CommandsServiceFactory
 import ru.citeck.ecos.commands.dto.CommandConfig
 import ru.citeck.ecos.commands.dto.CommandDto
 import ru.citeck.ecos.commands.dto.CommandResultDto
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
-import java.lang.Exception
-import java.lang.RuntimeException
+import ru.citeck.ecos.commands.utils.WeakValuesMap
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Future
+
+private val log = KotlinLogging.logger {}
 
 class RabbitCommandsService(
     factory: CommandsServiceFactory,
@@ -22,7 +23,7 @@ class RabbitCommandsService(
     private val commandsService: CommandsService = factory.commandsService
     private val properties = factory.properties
 
-    private val commands: MutableMap<String, CompletableFuture<CommandResultDto>> = ConcurrentHashMap()
+    private val commands = WeakValuesMap<String, CompletableFuture<CommandResultDto>>()
 
     init {
         rabbitContext = RabbitContext(
@@ -34,7 +35,7 @@ class RabbitCommandsService(
     }
 
     private fun onResultReceived(result: CommandResultDto) {
-        commands[result.command.id]?.complete(result)
+        commands.get(result.command.id)?.complete(result)
     }
 
     private fun onCommandReceived(command: CommandDto) : CommandResultDto {
@@ -46,7 +47,10 @@ class RabbitCommandsService(
 
     override fun execute(command: CommandDto, config: CommandConfig): Future<CommandResultDto> {
         val future = CompletableFuture<CommandResultDto>()
-        commands[command.id] = future
+        commands.put(command.id, future)
+        if (commands.size() > 10_000) {
+            log.warn { "Commands size is too big. Potentially memory leak. Size: " + commands.size() }
+        }
         try {
             rabbitContext.sendCommand(command, config)
         } catch (e: Exception) {
