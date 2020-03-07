@@ -32,14 +32,14 @@ class LocalCommandTest {
         val command = AddElementCommand(testElem)
 
         val result = commandsService.executeSync(command)
-        val resultObj = result.getResultData(CommandAddResult::class.java)
+        val resultObj = result.getResultAs(CommandAddResult::class.java)
 
         assertEquals(testElem, resultObj!!.value)
         assertTrue(result.errors.isEmpty())
         assertEquals(1, elements.size)
         assertEquals(testElem, elements[0])
 
-        val commandFromResult = result.getCommandData(AddElementCommand::class.java)
+        val commandFromResult = result.getCommandAs(AddElementCommand::class.java)
         assertEquals(commandFromResult, command)
 
         val exRes = commandsService.executeSync(AddElementCommand(EX_TEST_ELEM))

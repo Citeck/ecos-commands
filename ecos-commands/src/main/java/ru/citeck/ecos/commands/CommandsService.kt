@@ -5,7 +5,7 @@ import ru.citeck.ecos.commands.annotation.CommandType
 import ru.citeck.ecos.commands.context.CommandCtxManager
 import ru.citeck.ecos.commands.dto.CommandConfig
 import ru.citeck.ecos.commands.dto.CommandDto
-import ru.citeck.ecos.commands.dto.CommandResultDto
+import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.dto.ErrorDto
 import ru.citeck.ecos.commands.exceptions.ExecutorNotFound
 import ru.citeck.ecos.commands.utils.ErrorUtils
@@ -48,30 +48,55 @@ class CommandsService(factory: CommandsServiceFactory) {
 
     private val executors = ConcurrentHashMap<String, ExecutorInfo>()
 
-    fun executeSync(command: Any) : CommandResultDto {
+    fun executeSync(command: Any) : CommandResult {
         return executeSync {
             body = Json.mapper.toJson(command)
             type = needCommandType(command)
         }
     }
 
-    fun executeSync(block: CommandBuilder.() -> Unit) : CommandResultDto {
+    fun executeForGroupSync(command: Any) : List<CommandResult> {
+        return executeForGroupSync {
+            body = Json.mapper.toJson(command)
+            type = needCommandType(command)
+        }
+    }
+
+    fun executeSync(block: CommandBuilder.() -> Unit) : CommandResult {
         return execute(block).get(props.commandTimeoutMs, TimeUnit.MILLISECONDS)
     }
 
-    fun execute(command: Any) : Future<CommandResultDto> {
+    fun executeForGroupSync(block: CommandBuilder.() -> Unit) : List<CommandResult> {
+        return executeForGroup(block).get(props.commandTimeoutMs, TimeUnit.MILLISECONDS)
+    }
+
+    fun execute(command: Any) : Future<CommandResult> {
         return execute {
             body = Json.mapper.toJson(command)
             type = needCommandType(command)
         }
     }
 
-    fun execute(block: CommandBuilder.() -> Unit) : Future<CommandResultDto> {
+    fun executeForGroup(command: Any) : Future<List<CommandResult>> {
+        return executeForGroup {
+            body = Json.mapper.toJson(command)
+            type = needCommandType(command)
+        }
+    }
+
+    fun execute(block: CommandBuilder.() -> Unit) : Future<CommandResult> {
         val (command, config) = CommandBuilder(props).apply(block).build()
         return execute(command, config)
     }
 
-    fun executeLocal(command: CommandDto) : CommandResultDto {
+    fun executeForGroup(block: CommandBuilder.() -> Unit) : Future<List<CommandResult>> {
+        val builder = CommandBuilder(props)
+        builder.ttl = Duration.ofSeconds(2)
+        val (command, config) = builder.apply(block).build()
+        return executeForGroup(command, config)
+    }
+
+    fun executeLocal(command: CommandDto) : CommandResult {
 
         log.info("Execute command ${command.id} as local")
 
@@ -100,17 +125,24 @@ class CommandsService(factory: CommandsServiceFactory) {
             null
         }
 
-        return CommandResultDto(
+        return CommandResult(
             id = UUID.randomUUID().toString(),
             started = started.toEpochMilli(),
             completed = Instant.now().toEpochMilli(),
             command = command,
             result = Json.mapper.toJson(resultObj),
-            errors = errors
+            errors = errors,
+            appName = props.appName,
+            appInstanceId = props.appInstanceId
         )
     }
 
-    fun execute(command: CommandDto, config: CommandConfig) : Future<CommandResultDto> {
+    fun executeForGroup(command: CommandDto, config: CommandConfig) : Future<List<CommandResult>> {
+        val future = remote.executeForGroup(command, config)
+        return CompletableFuture.supplyAsync { future.get(props.commandTimeoutMs, TimeUnit.MILLISECONDS) }
+    }
+
+    fun execute(command: CommandDto, config: CommandConfig) : Future<CommandResult> {
 
         log.info("Command received: $command")
 
@@ -122,11 +154,7 @@ class CommandsService(factory: CommandsServiceFactory) {
 
             log.info("Execute command ${command.id} as remote")
 
-            if (remote == null) {
-                throw IllegalStateException("Remote commands service is not defined!")
-            }
-
-            val future = remote!!.execute(command, config)
+            val future = remote.execute(command, config)
             CompletableFuture.supplyAsync { future.get(props.commandTimeoutMs, TimeUnit.MILLISECONDS) }
         }
     }

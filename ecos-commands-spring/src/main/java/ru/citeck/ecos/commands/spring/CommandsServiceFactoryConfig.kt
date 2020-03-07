@@ -1,11 +1,11 @@
 package ru.citeck.ecos.commands.spring
 
 import org.slf4j.LoggerFactory
-import org.springframework.amqp.rabbit.connection.ConnectionFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import com.rabbitmq.client.ConnectionFactory
 import ru.citeck.ecos.commands.CommandsProperties
 import ru.citeck.ecos.commands.CommandsService
 import ru.citeck.ecos.commands.CommandsServiceFactory
@@ -20,7 +20,7 @@ open class CommandsServiceFactoryConfig : CommandsServiceFactory() {
     }
 
     private var props = CommandsProperties()
-    private var connectionFactory: ConnectionFactory? = null
+    private lateinit var mqProps: RabbitMqConnectionProperties
 
     @Value("\${ecos.application.name:spring.application.name:}")
     private lateinit var appName: String
@@ -44,27 +44,36 @@ open class CommandsServiceFactoryConfig : CommandsServiceFactory() {
     }
 
     @Bean
-    override fun createRemoteCommandsService(): RemoteCommandsService? {
+    override fun createRemoteCommandsService(): RemoteCommandsService {
 
-        val connectionFactory = connectionFactory
+        if (mqProps.host?.isBlank() != false) {
 
-        if (connectionFactory == null) {
-            log.warn("Rabbit connection factory is null. Remote commands will not be available")
-            return super.createRemoteCommandsService()
+            val connectionFactory = ConnectionFactory()
+            connectionFactory.isAutomaticRecoveryEnabled = true
+            connectionFactory.host = mqProps.host
+            connectionFactory.username = mqProps.username
+            connectionFactory.password = mqProps.password
+
+            try {
+                val connection = connectionFactory.newConnection()
+                val channel = connection.createChannel()
+                return RabbitCommandsService(this, channel)
+            } catch (e: Exception) {
+                log.error("Cannot configure connection to RabbitMQ", e)
+            }
         }
-        val connection = connectionFactory.createConnection()
-        val channel = connection.createChannel(false)
 
-        return RabbitCommandsService(this, channel)
-    }
-
-    @Autowired(required = false)
-    fun setConnectionFactory(connectionFactory: ConnectionFactory) {
-        this.connectionFactory = connectionFactory
+        log.warn("Rabbit mq host is null. Remote commands will not be available")
+        return super.createRemoteCommandsService()
     }
 
     @Autowired
     fun setProperties(properties: CommandsProperties) {
         this.props = properties
+    }
+
+    @Autowired
+    fun setMqProperties(props: RabbitMqConnectionProperties) {
+        this.mqProps = props
     }
 }

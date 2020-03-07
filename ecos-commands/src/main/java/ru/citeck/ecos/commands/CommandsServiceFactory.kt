@@ -20,8 +20,8 @@ open class CommandsServiceFactory {
         return CommandsProperties()
     }
 
-    protected open fun createRemoteCommandsService() : RemoteCommandsService? {
-        return NoopRemoteCommandsService()
+    protected open fun createRemoteCommandsService() : RemoteCommandsService {
+        return NoopRemoteCommandsService(this)
     }
 
     protected open fun createTransactionManager() : TransactionManager {

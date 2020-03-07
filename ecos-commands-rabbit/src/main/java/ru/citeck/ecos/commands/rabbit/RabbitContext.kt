@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory
 import ru.citeck.ecos.commands.CommandsProperties
 import ru.citeck.ecos.commands.dto.CommandConfig
 import ru.citeck.ecos.commands.dto.CommandDto
-import ru.citeck.ecos.commands.dto.CommandResultDto
+import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.utils.ErrorUtils
 import ru.citeck.ecos.commons.json.Json
 import ru.citeck.ecos.commons.json.JsonOptions
@@ -25,8 +25,8 @@ import kotlin.reflect.KClass
 
 class RabbitContext(
     private val channel: Channel,
-    private val onCommand: (CommandDto) -> CommandResultDto,
-    private val onResult: (CommandResultDto) -> Unit,
+    private val onCommand: (CommandDto) -> CommandResult,
+    private val onResult: (CommandResult) -> Unit,
     properties: CommandsProperties
 ) {
 
@@ -49,15 +49,20 @@ class RabbitContext(
     private val appErrQueue = ERR_QUEUE.format(properties.appName)
     private val appResQueue = getResQueueId(properties.appName, properties.appInstanceId)
 
+    private val allComQueue = COM_QUEUE.format(properties.appInstanceId)
+    private val allComQueueKey = COM_QUEUE.format("all")
+
     private val comConsumerTag: String
+    private val allConsumerTag: String
     private val resConsumerTag: String
 
     private val declaredQueues: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap())
 
     init {
-        declareQueue(appComQueue)
-        declareQueue(appErrQueue)
-        declareQueue(appResQueue, durable = false)
+        declareQueue(appComQueue, appComQueue)
+        declareQueue(appErrQueue, appErrQueue)
+        declareQueue(appResQueue, appResQueue, durable = false)
+        declareQueue(allComQueue, allComQueueKey, durable = false)
 
         comConsumerTag = channel.basicConsume(
             appComQueue,
@@ -72,6 +77,21 @@ class RabbitContext(
                 }
             },
             { consumerTag: String -> log.info("Com consuming cancelled. Tag: $consumerTag") }
+        )
+
+        allConsumerTag = channel.basicConsume(
+            allComQueue,
+            true,
+            { _, message: Delivery ->
+                run {
+                    try {
+                        handleCommandMqMessage(message)
+                    } catch (e: Exception) {
+                        toErrorQueue(message, e)
+                    }
+                }
+            },
+            { consumerTag: String -> log.info("All com consuming cancelled. Tag: $consumerTag") }
         )
 
         resConsumerTag = channel.basicConsume(
@@ -117,12 +137,16 @@ class RabbitContext(
         val headers = HashMap(message.properties.headers)
         headers["ECOS_ERR"] = Json.mapper.toString(errDto)
 
-        val props = message.properties.builder().headers(headers).build()
+        val props = message.properties.builder()
+            .headers(headers)
+            .expiration(null)
+            .build()
+
         publishMsg(appErrQueue, true, message.body, props)
     }
 
     private fun handleResultMqMessage(message: Delivery) {
-        onResult(fromMsgBytes(message.body, CommandResultDto::class))
+        onResult(fromMsgBytes(message.body, CommandResult::class))
     }
 
     private fun handleCommandMqMessage(message: Delivery) {
@@ -141,7 +165,7 @@ class RabbitContext(
                            props: AMQP.BasicProperties = AMQP.BasicProperties.Builder().build()) {
 
         if (!declaredQueues.contains(queue)) {
-            declareQueue(queue, durable)
+            declareQueue(queue, queue, durable)
         }
 
         channel.basicPublish(COM_EXCHANGE, queue, props, body)
@@ -159,21 +183,21 @@ class RabbitContext(
     }
 
     @Synchronized
-    private fun declareQueue(name: String, durable: Boolean = true) {
+    private fun declareQueue(queue: String, routingKey: String, durable: Boolean = true) {
         channel.queueDeclare(
-            name,
+            queue,
             durable,
             true,
             !durable,
             null
         )
         try {
-            channel.queueBind(name, COM_EXCHANGE, name)
+            channel.queueBind(queue, COM_EXCHANGE, routingKey)
         } catch (e: Exception) {
             exchangeDeclare()
-            channel.queueBind(name, COM_EXCHANGE, name)
+            channel.queueBind(queue, COM_EXCHANGE, routingKey)
         }
-        declaredQueues.add(name)
+        declaredQueues.add(queue)
     }
 
     private fun getResQueueId(appName: String, appId: String) : String {

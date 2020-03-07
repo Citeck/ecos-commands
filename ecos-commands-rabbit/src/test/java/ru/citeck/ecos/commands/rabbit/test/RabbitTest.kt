@@ -46,8 +46,11 @@ class RabbitTest {
         val app0 = App0(channel)
         val app1 = App1(channel)
 
+        app0.commandsService.addExecutor(GetAppInfoExecutor(app0))
+
         app1.commandsService.addExecutor(AddElementExecutor())
         app1.commandsService.addExecutor(AddElementExecutor2())
+        app1.commandsService.addExecutor(GetAppInfoExecutor(app1))
 
         elements.clear()
 
@@ -59,14 +62,14 @@ class RabbitTest {
             body = command
         }
         val result = resFuture.get()
-        val resultObj = result.getResultData(CommandAddResult::class.java)
+        val resultObj = result.getResultAs(CommandAddResult::class.java)
 
         assertEquals(testElem, resultObj!!.value)
         assertTrue(result.errors.isEmpty())
         assertEquals(1, elements.size)
         assertEquals(testElem, elements[0])
 
-        val commandFromResult = result.getCommandData(AddElementCommand::class.java)
+        val commandFromResult = result.getCommandAs(AddElementCommand::class.java)
         assertEquals(commandFromResult, command)
 
         val exRes = app0.commandsService.execute {
@@ -91,9 +94,39 @@ class RabbitTest {
             targetApp = APP_1_NAME
             body = command2
         }
-        val resultObj2 = result2.getResultData(ByteArray::class.java)
+        val resultObj2 = result2.getResultAs(ByteArray::class.java)
         assertTrue(BYTES_RES.contentEquals(resultObj2!!))
+
+        val res = app0.commandsService.executeForGroupSync{
+            body = GetAppInfo()
+            targetApp = "all"
+        }.map {
+            it.getResultAs(GetAppInfoExecutorRes::class.java)
+        }
+        assertEquals(2, res.size)
+        assertTrue(res.contains(GetAppInfoExecutorRes(APP_0_NAME, APP_0_ID)))
+        assertTrue(res.contains(GetAppInfoExecutorRes(APP_1_NAME, APP_1_ID)))
     }
+
+    inner class GetAppInfoExecutor(factory: CommandsServiceFactory) : CommandExecutor<GetAppInfo> {
+
+        val props = factory.properties
+
+        override fun execute(command: GetAppInfo): Any? {
+            return GetAppInfoExecutorRes(
+                appName = props.appName,
+                appId = props.appInstanceId
+            )
+        }
+    }
+
+    @CommandType("get-app-info")
+    class GetAppInfo
+
+    data class GetAppInfoExecutorRes(
+        val appName: String,
+        val appId: String
+    )
 
     inner class AddElementExecutor : CommandExecutor<AddElementCommand> {
 
@@ -141,7 +174,7 @@ class RabbitTest {
             return props
         }
 
-        override fun createRemoteCommandsService(): RemoteCommandsService? {
+        override fun createRemoteCommandsService(): RemoteCommandsService {
             return RabbitCommandsService(this, channel)
         }
     }
@@ -159,7 +192,7 @@ class RabbitTest {
             return props
         }
 
-        override fun createRemoteCommandsService(): RemoteCommandsService? {
+        override fun createRemoteCommandsService(): RemoteCommandsService {
             return RabbitCommandsService(this, channel)
         }
     }
