@@ -11,20 +11,20 @@ data class CommandResult(
     val started: Long,
     val completed: Long,
 
-    val command: CommandDto,
+    val command: Command,
 
     val appName: String,
     val appInstanceId: String,
 
     val result: JsonNode = NullNode.instance,
-    val errors: List<ErrorDto> = emptyList()
+    val errors: List<CommandError> = emptyList()
 ) {
 
-    fun <T> getResultAs(type: Class<T>) : T? {
+    fun <T : Any> getResultAs(type: Class<T>) : T? {
         return Json.mapper.convert(result, type)
     }
 
-    fun <T> getCommandAs(type: Class<T>) : T? {
+    fun <T : Any> getCommandAs(type: Class<T>) : T? {
         return Json.mapper.convert(command.body, type)
     }
 }

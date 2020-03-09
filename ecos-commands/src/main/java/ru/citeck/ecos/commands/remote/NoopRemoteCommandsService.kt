@@ -5,9 +5,9 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import ru.citeck.ecos.commands.CommandsServiceFactory
 import ru.citeck.ecos.commands.dto.CommandConfig
-import ru.citeck.ecos.commands.dto.CommandDto
+import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandResult
-import ru.citeck.ecos.commands.dto.ErrorDto
+import ru.citeck.ecos.commands.dto.CommandError
 import java.time.Instant
 import java.util.*
 import java.util.concurrent.CompletableFuture
@@ -22,7 +22,7 @@ class NoopRemoteCommandsService(factory: CommandsServiceFactory) : RemoteCommand
         val log: Logger = LoggerFactory.getLogger(NoopRemoteCommandsService::class.java)
     }
 
-    override fun execute(command: CommandDto, config: CommandConfig) : Future<CommandResult> {
+    override fun execute(command: Command, config: CommandConfig) : Future<CommandResult> {
         val errorMsg = "Remote commands service is not defined. Command can't be executed"
         log.error("$errorMsg. Command: $command")
         return CompletableFuture.completedFuture(CommandResult(
@@ -31,16 +31,16 @@ class NoopRemoteCommandsService(factory: CommandsServiceFactory) : RemoteCommand
             command = command,
             started = Instant.now().toEpochMilli(),
             completed = Instant.now().toEpochMilli(),
-            errors = listOf(ErrorDto(
-                type = "",
-                message = errorMsg
+            errors = listOf(CommandError(
+                    type = "",
+                    message = errorMsg
             )),
             appName = properties.appName,
             appInstanceId = properties.appInstanceId
         ))
     }
 
-    override fun executeForGroup(command: CommandDto, config: CommandConfig): Future<List<CommandResult>> {
+    override fun executeForGroup(command: Command, config: CommandConfig): Future<List<CommandResult>> {
         return CompletableFuture.completedFuture(listOf(execute(command, config).get(1, TimeUnit.MINUTES)))
     }
 }

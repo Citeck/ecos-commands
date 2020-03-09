@@ -5,7 +5,7 @@ import mu.KotlinLogging
 import ru.citeck.ecos.commands.CommandsService
 import ru.citeck.ecos.commands.CommandsServiceFactory
 import ru.citeck.ecos.commands.dto.CommandConfig
-import ru.citeck.ecos.commands.dto.CommandDto
+import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
 import ru.citeck.ecos.commands.utils.WeakValuesMap
@@ -50,7 +50,7 @@ class RabbitCommandsService(
         }
     }
 
-    private fun onCommandReceived(command: CommandDto) : CommandResult {
+    private fun onCommandReceived(command: Command) : CommandResult {
         if (command.targetApp != properties.appName && command.targetApp != "all") {
             throw RuntimeException("Incorrect target app name '${command.targetApp}'. " +
                                    "Expected: '${properties.appName}' OR 'all'")
@@ -58,7 +58,7 @@ class RabbitCommandsService(
         return commandsService.executeLocal(command)
     }
 
-    override fun executeForGroup(command: CommandDto, config: CommandConfig): Future<List<CommandResult>> {
+    override fun executeForGroup(command: Command, config: CommandConfig): Future<List<CommandResult>> {
         val ttlMs = config.ttl.toMillis()
         if (ttlMs <= 0 && ttlMs > TimeUnit.MINUTES.toMillis(10)) {
             throw IllegalArgumentException("Illegal ttl for group command: $ttlMs")
@@ -80,7 +80,7 @@ class RabbitCommandsService(
         return future
     }
 
-    override fun execute(command: CommandDto, config: CommandConfig): Future<CommandResult> {
+    override fun execute(command: Command, config: CommandConfig): Future<CommandResult> {
         val future = CompletableFuture<CommandResult>()
         commands.put(command.id, future)
         if (commands.size() > 10_000) {

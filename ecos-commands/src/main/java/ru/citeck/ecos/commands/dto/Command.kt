@@ -4,7 +4,7 @@ import ecos.com.fasterxml.jackson210.databind.JsonNode
 import ecos.com.fasterxml.jackson210.databind.node.NullNode
 import ru.citeck.ecos.commands.TransactionType
 
-data class CommandDto(
+data class Command(
 
     val id: String,
     val tenant: String,

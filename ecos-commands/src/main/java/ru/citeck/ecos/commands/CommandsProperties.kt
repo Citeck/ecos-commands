@@ -5,5 +5,5 @@ class CommandsProperties {
     var appName = ""
     var appInstanceId = ""
 
-    var commandTimeoutMs = 10 * 60 * 1000L // 10 min
+    var commandTimeoutMs = 60_000L
 }

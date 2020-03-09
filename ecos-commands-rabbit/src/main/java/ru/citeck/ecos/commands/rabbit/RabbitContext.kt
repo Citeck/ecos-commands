@@ -9,9 +9,9 @@ import ecos.com.fasterxml.jackson210.dataformat.cbor.CBORFactory
 import org.slf4j.LoggerFactory
 import ru.citeck.ecos.commands.CommandsProperties
 import ru.citeck.ecos.commands.dto.CommandConfig
-import ru.citeck.ecos.commands.dto.CommandDto
+import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandResult
-import ru.citeck.ecos.commands.utils.ErrorUtils
+import ru.citeck.ecos.commands.utils.CommandErrorUtils
 import ru.citeck.ecos.commons.json.Json
 import ru.citeck.ecos.commons.json.JsonOptions
 import java.io.ByteArrayInputStream
@@ -25,7 +25,7 @@ import kotlin.reflect.KClass
 
 class RabbitContext(
     private val channel: Channel,
-    private val onCommand: (CommandDto) -> CommandResult,
+    private val onCommand: (Command) -> CommandResult,
     private val onResult: (CommandResult) -> Unit,
     properties: CommandsProperties
 ) {
@@ -110,7 +110,7 @@ class RabbitContext(
         )
     }
 
-    fun sendCommand(command: CommandDto, config: CommandConfig) {
+    fun sendCommand(command: Command, config: CommandConfig) {
 
         val msgBody = toMsgBytes(command)
         val comQueue = COM_QUEUE.format(command.targetApp)
@@ -133,7 +133,7 @@ class RabbitContext(
 
         log.error("Error", reason)
 
-        val errDto = ErrorUtils.convertException(reason)
+        val errDto = CommandErrorUtils.convertException(reason)
         val headers = HashMap(message.properties.headers)
         headers["ECOS_ERR"] = Json.mapper.toString(errDto)
 
@@ -151,7 +151,7 @@ class RabbitContext(
 
     private fun handleCommandMqMessage(message: Delivery) {
 
-        val command = fromMsgBytes(message.body, CommandDto::class)
+        val command = fromMsgBytes(message.body, Command::class)
         val result = onCommand.invoke(command)
 
         val resQueue = getResQueueId(command.sourceApp, command.sourceAppId)

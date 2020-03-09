@@ -4,11 +4,11 @@ import mu.KotlinLogging
 import ru.citeck.ecos.commands.annotation.CommandType
 import ru.citeck.ecos.commands.context.CommandCtxManager
 import ru.citeck.ecos.commands.dto.CommandConfig
-import ru.citeck.ecos.commands.dto.CommandDto
+import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandResult
-import ru.citeck.ecos.commands.dto.ErrorDto
+import ru.citeck.ecos.commands.dto.CommandError
 import ru.citeck.ecos.commands.exceptions.ExecutorNotFound
-import ru.citeck.ecos.commands.utils.ErrorUtils
+import ru.citeck.ecos.commands.utils.CommandErrorUtils
 import ru.citeck.ecos.commons.json.Json
 import java.time.Duration
 import java.time.Instant
@@ -96,7 +96,7 @@ class CommandsService(factory: CommandsServiceFactory) {
         return executeForGroup(command, config)
     }
 
-    fun executeLocal(command: CommandDto) : CommandResult {
+    fun executeLocal(command: Command) : CommandResult {
 
         log.info("Execute command ${command.id} as local")
 
@@ -111,7 +111,7 @@ class CommandsService(factory: CommandsServiceFactory) {
 
         val started = Instant.now()
 
-        val errors = ArrayList<ErrorDto>()
+        val errors = ArrayList<CommandError>()
 
         val resultObj : Any? = try {
             txnManager.doInTransaction(Callable {
@@ -121,7 +121,7 @@ class CommandsService(factory: CommandsServiceFactory) {
             })
         } catch (e : Exception) {
             log.error("Command execution error", e)
-            errors.add(ErrorUtils.convertException(e))
+            errors.add(CommandErrorUtils.convertException(e))
             null
         }
 
@@ -137,12 +137,12 @@ class CommandsService(factory: CommandsServiceFactory) {
         )
     }
 
-    fun executeForGroup(command: CommandDto, config: CommandConfig) : Future<List<CommandResult>> {
+    fun executeForGroup(command: Command, config: CommandConfig) : Future<List<CommandResult>> {
         val future = remote.executeForGroup(command, config)
         return CompletableFuture.supplyAsync { future.get(props.commandTimeoutMs, TimeUnit.MILLISECONDS) }
     }
 
-    fun execute(command: CommandDto, config: CommandConfig) : Future<CommandResult> {
+    fun execute(command: Command, config: CommandConfig) : Future<CommandResult> {
 
         log.info("Command received: $command")
 
@@ -200,8 +200,8 @@ class CommandsService(factory: CommandsServiceFactory) {
         var type: String? = null
         var body: Any? = null
 
-        fun build() : Pair<CommandDto, CommandConfig> {
-            return Pair(CommandDto(
+        fun build() : Pair<Command, CommandConfig> {
+            return Pair(Command(
                 id = id,
                 tenant = tenant,
                 time = time.toEpochMilli(),

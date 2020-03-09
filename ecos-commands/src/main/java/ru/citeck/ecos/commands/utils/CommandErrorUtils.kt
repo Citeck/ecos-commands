@@ -1,11 +1,11 @@
 package ru.citeck.ecos.commands.utils
 
-import ru.citeck.ecos.commands.dto.ErrorDto
+import ru.citeck.ecos.commands.dto.CommandError
 import java.util.*
 
-object ErrorUtils {
+object CommandErrorUtils {
 
-    fun convertException(exception: Exception): ErrorDto {
+    fun convertException(exception: Exception): CommandError {
 
         var throwable: Throwable? = exception
         while (throwable!!.cause != null) {
@@ -20,9 +20,9 @@ object ErrorUtils {
                 i++
             }
         }
-        return ErrorDto(
+        return CommandError(
             type = throwable.javaClass.simpleName,
-            message = throwable.localizedMessage,
+            message = throwable.localizedMessage ?: "",
             stackTrace = errorStackTrace
         )
     }
