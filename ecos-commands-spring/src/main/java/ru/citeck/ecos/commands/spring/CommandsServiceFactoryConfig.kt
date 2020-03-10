@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import com.rabbitmq.client.ConnectionFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import ru.citeck.ecos.commands.CommandsProperties
 import ru.citeck.ecos.commands.CommandsService
 import ru.citeck.ecos.commands.CommandsServiceFactory
@@ -33,6 +34,8 @@ open class CommandsServiceFactoryConfig : CommandsServiceFactory() {
         return super.createCommandsService()
     }
 
+    @Bean
+    @ConditionalOnMissingBean(CommandsProperties::class)
     override fun createProperties(): CommandsProperties {
         if (props.appName.isBlank()) {
             props.appName = appName
