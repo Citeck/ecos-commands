@@ -49,20 +49,22 @@ class RabbitContext(
     private val appErrQueue = ERR_QUEUE.format(properties.appName)
     private val appResQueue = getResQueueId(properties.appName, properties.appInstanceId)
 
-    private val allComQueue = COM_QUEUE.format(properties.appInstanceId)
+    private val instanceComQueue = COM_QUEUE.format(properties.appInstanceId)
     private val allComQueueKey = COM_QUEUE.format("all")
 
     private val comConsumerTag: String
-    private val allConsumerTag: String
+    private val instanceComConsumerTag: String
     private val resConsumerTag: String
 
     private val declaredQueues: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap())
+
+    private var isExchangeDeclared = false
 
     init {
         declareQueue(appComQueue, appComQueue)
         declareQueue(appErrQueue, appErrQueue)
         declareQueue(appResQueue, appResQueue, durable = false)
-        declareQueue(allComQueue, allComQueueKey, durable = false)
+        declareQueue(instanceComQueue, allComQueueKey, durable = false)
 
         comConsumerTag = channel.basicConsume(
             appComQueue,
@@ -79,8 +81,8 @@ class RabbitContext(
             { consumerTag: String -> log.info("Com consuming cancelled. Tag: $consumerTag") }
         )
 
-        allConsumerTag = channel.basicConsume(
-            allComQueue,
+        instanceComConsumerTag = channel.basicConsume(
+            instanceComQueue,
             true,
             { _, message: Delivery ->
                 run {
@@ -118,14 +120,13 @@ class RabbitContext(
         if (!config.ttl.isZero) {
             publishMsg(
                 comQueue,
-                true,
                 msgBody,
                 AMQP.BasicProperties.Builder()
                     .expiration(config.ttl.toMillis().toString())
                     .build()
             )
         } else {
-            publishMsg(comQueue, true, msgBody)
+            publishMsg(comQueue, msgBody)
         }
     }
 
@@ -142,7 +143,7 @@ class RabbitContext(
             .expiration(null)
             .build()
 
-        publishMsg(appErrQueue, true, message.body, props)
+        publishMsg(appErrQueue, message.body, props)
     }
 
     private fun handleResultMqMessage(message: Delivery) {
@@ -156,30 +157,28 @@ class RabbitContext(
 
         val resQueue = getResQueueId(command.sourceApp, command.sourceAppId)
 
-        publishMsg(resQueue, false, toMsgBytes(result))
+        publishMsg(resQueue, toMsgBytes(result))
     }
 
     private fun publishMsg(queue: String,
-                           durable: Boolean,
                            body: ByteArray,
                            props: AMQP.BasicProperties = AMQP.BasicProperties.Builder().build()) {
-
-        if (!declaredQueues.contains(queue)) {
-            declareQueue(queue, queue, durable)
-        }
 
         channel.basicPublish(COM_EXCHANGE, queue, props, body)
     }
 
     private fun exchangeDeclare() {
-        channel.exchangeDeclare(
-            COM_EXCHANGE,
-            BuiltinExchangeType.TOPIC,
-            true,
-            false,
-            false,
-            emptyMap()
-        )
+        if (!isExchangeDeclared) {
+            channel.exchangeDeclare(
+                COM_EXCHANGE,
+                BuiltinExchangeType.TOPIC,
+                true,
+                false,
+                false,
+                emptyMap()
+            )
+            isExchangeDeclared = true
+        }
     }
 
     @Synchronized
@@ -187,16 +186,12 @@ class RabbitContext(
         channel.queueDeclare(
             queue,
             durable,
-            true,
+            false,
             !durable,
             null
         )
-        try {
-            channel.queueBind(queue, COM_EXCHANGE, routingKey)
-        } catch (e: Exception) {
-            exchangeDeclare()
-            channel.queueBind(queue, COM_EXCHANGE, routingKey)
-        }
+        exchangeDeclare()
+        channel.queueBind(queue, COM_EXCHANGE, routingKey)
         declaredQueues.add(queue)
     }
 

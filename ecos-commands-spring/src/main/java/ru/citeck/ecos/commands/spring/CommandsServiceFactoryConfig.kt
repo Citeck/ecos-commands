@@ -23,10 +23,10 @@ open class CommandsServiceFactoryConfig : CommandsServiceFactory() {
     private var props = CommandsProperties()
     private lateinit var mqProps: RabbitMqConnectionProperties
 
-    @Value("\${ecos.application.name:spring.application.name:}")
+    @Value("\${spring.application.name:}")
     private lateinit var appName: String
 
-    @Value("\${ecos.application.instanceId:eureka.instance.instanceId:}")
+    @Value("\${eureka.instance.instanceId:}")
     private lateinit var appInstanceId: String
 
     @Bean
@@ -49,7 +49,9 @@ open class CommandsServiceFactoryConfig : CommandsServiceFactory() {
     @Bean
     override fun createRemoteCommandsService(): RemoteCommandsService {
 
-        if (mqProps.host?.isBlank() != false) {
+        val host = mqProps.host
+
+        if (host != null && host.isNotBlank()) {
 
             val connectionFactory = ConnectionFactory()
             connectionFactory.isAutomaticRecoveryEnabled = true

@@ -23,8 +23,6 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.full.findAnnotation
 
-val log = KotlinLogging.logger {}
-
 private fun needCommandType(command: Any?) : String {
     if (command == null) {
         throw RuntimeException("Command type is undefined for null body")
@@ -41,6 +39,10 @@ private fun getCommandType(command: Any?) : String? {
 }
 
 class CommandsService(factory: CommandsServiceFactory) {
+
+    companion object {
+        val log = KotlinLogging.logger {}
+    }
 
     private val props = factory.properties
     private val remote by lazy { factory.remoteCommandsService }
@@ -98,8 +100,6 @@ class CommandsService(factory: CommandsServiceFactory) {
 
     fun executeLocal(command: Command) : CommandResult {
 
-        log.info("Execute command ${command.id} as local")
-
         val executorInfo = executors[command.type] ?: throw ExecutorNotFound(command.type)
 
         var executorCommand: Any? = null
@@ -144,15 +144,11 @@ class CommandsService(factory: CommandsServiceFactory) {
 
     fun execute(command: Command, config: CommandConfig) : Future<CommandResult> {
 
-        log.info("Command received: $command")
-
         return if (command.targetApp == props.appName) {
 
             CompletableFuture.completedFuture(executeLocal(command))
 
         } else {
-
-            log.info("Execute command ${command.id} as remote")
 
             val future = remote.execute(command, config)
             CompletableFuture.supplyAsync { future.get(props.commandTimeoutMs, TimeUnit.MILLISECONDS) }
