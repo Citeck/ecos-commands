@@ -4,17 +4,15 @@ import java.util.concurrent.Callable
 
 object CommandCtxManager {
 
+    @JvmStatic
     var controller: CommandCtxController? = null
 
     private val currentUser = ThreadLocal<String>()
     private val currentTenant = ThreadLocal<String>()
 
-    private var isInContext = ThreadLocal<Boolean>()
+    private var isInContext = ThreadLocal.withInitial { false }
 
-    init {
-        isInContext.set(false)
-    }
-
+    @JvmStatic
     fun getCurrentUser() : String {
         return if (isInContext.get()) {
             currentUser.get()
@@ -23,6 +21,7 @@ object CommandCtxManager {
         }
     }
 
+    @JvmStatic
     fun getCurrentTenant() : String {
         return if (isInContext.get()) {
             currentTenant.get()
@@ -31,6 +30,7 @@ object CommandCtxManager {
         }
     }
 
+    @JvmStatic
     fun <T> runWith(user: String, tenant: String, callable: Callable<T>) : T {
 
         val userBefore = controller?.getCurrentUser() ?: ""
