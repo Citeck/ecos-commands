@@ -22,6 +22,9 @@ class NoopRemoteCommandsService(factory: CommandsServiceFactory) : RemoteCommand
         val log: Logger = LoggerFactory.getLogger(NoopRemoteCommandsService::class.java)
     }
 
+    override fun init() {
+    }
+
     override fun execute(command: Command, config: CommandConfig) : Future<CommandResult> {
         val errorMsg = "Remote commands service is not defined. Command can't be executed"
         log.error("$errorMsg. Command: $command")

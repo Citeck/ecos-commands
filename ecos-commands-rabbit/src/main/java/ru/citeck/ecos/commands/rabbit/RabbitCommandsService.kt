@@ -19,11 +19,11 @@ import kotlin.concurrent.schedule
 private val log = KotlinLogging.logger {}
 
 class RabbitCommandsService(
-    factory: CommandsServiceFactory,
-    channel: Channel
+    private val factory: CommandsServiceFactory,
+    private val channel: Channel
 ) : RemoteCommandsService {
 
-    private val rabbitContext: RabbitContext
+    private lateinit var rabbitContext: RabbitContext
     private val commandsService: CommandsService = factory.commandsService
     private val properties = factory.properties
 
@@ -32,13 +32,19 @@ class RabbitCommandsService(
 
     private val timer = Timer("RabbitCommandsTimer", false)
 
-    init {
+    private var initialized = false
+
+    override fun init() {
+        if (initialized) {
+            return
+        }
         rabbitContext = RabbitContext(
             channel,
             { onCommandReceived(it) },
             { onResultReceived(it) },
             factory.properties
         )
+        initialized = true
     }
 
     private fun onResultReceived(result: CommandResult) {

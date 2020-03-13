@@ -1,12 +1,14 @@
 package ru.citeck.ecos.commands.spring
 
+import com.rabbitmq.client.ConnectionFactory
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import com.rabbitmq.client.ConnectionFactory
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
+import org.springframework.context.event.ContextRefreshedEvent
+import org.springframework.context.event.EventListener
 import ru.citeck.ecos.commands.CommandsProperties
 import ru.citeck.ecos.commands.CommandsService
 import ru.citeck.ecos.commands.CommandsServiceFactory
@@ -32,6 +34,11 @@ open class CommandsServiceFactoryConfig : CommandsServiceFactory() {
     @Bean
     override fun createCommandsService(): CommandsService {
         return super.createCommandsService()
+    }
+
+    @EventListener
+    fun onApplicationEvent(event: ContextRefreshedEvent) {
+        createRemoteCommandsService().init()
     }
 
     @Bean

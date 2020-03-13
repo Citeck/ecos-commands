@@ -175,7 +175,9 @@ class RabbitTest {
         }
 
         override fun createRemoteCommandsService(): RemoteCommandsService {
-            return RabbitCommandsService(this, channel)
+            val service = RabbitCommandsService(this, channel)
+            service.init()
+            return service
         }
     }
 
@@ -193,7 +195,9 @@ class RabbitTest {
         }
 
         override fun createRemoteCommandsService(): RemoteCommandsService {
-            return RabbitCommandsService(this, channel)
+            val service = RabbitCommandsService(this, channel)
+            service.init()
+            return service
         }
     }
 }

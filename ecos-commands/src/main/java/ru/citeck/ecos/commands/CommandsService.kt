@@ -115,9 +115,13 @@ class CommandsService(factory: CommandsServiceFactory) {
 
         val resultObj : Any? = try {
             txnManager.doInTransaction(Callable {
-                CommandCtxManager.runWith(command.user, command.tenant, Callable {
-                    executorInfo.executor.execute(executorCommand)
-                })
+                CommandCtxManager.runWith(
+                    user = command.user,
+                    tenant = command.tenant,
+                    appName = command.sourceApp,
+                    appInstanceId = command.sourceAppId,
+                    action = Callable { executorInfo.executor.execute(executorCommand) }
+                )
             })
         } catch (e : Exception) {
             log.error("Command execution error", e)

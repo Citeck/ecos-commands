@@ -7,15 +7,13 @@ object CommandCtxManager {
     @JvmStatic
     var controller: CommandCtxController? = null
 
-    private val currentUser = ThreadLocal<String>()
-    private val currentTenant = ThreadLocal<String>()
-
+    private val context = ThreadLocal.withInitial { CtxState() }
     private var isInContext = ThreadLocal.withInitial { false }
 
     @JvmStatic
     fun getCurrentUser() : String {
         return if (isInContext.get()) {
-            currentUser.get()
+            context.get().currentUser
         } else {
             controller?.getCurrentUser() ?: ""
         }
@@ -24,36 +22,66 @@ object CommandCtxManager {
     @JvmStatic
     fun getCurrentTenant() : String {
         return if (isInContext.get()) {
-            currentTenant.get()
+            context.get().currentTenant
         } else {
             controller?.getCurrentTenant() ?: ""
         }
     }
 
     @JvmStatic
-    fun <T> runWith(user: String, tenant: String, callable: Callable<T>) : T {
+    fun getSourceAppName() : String {
+        return context.get().appName
+    }
+
+    @JvmStatic
+    fun getSourceAppInstanceId() : String {
+        return context.get().appInstanceId
+    }
+
+    @JvmStatic
+    fun <T> runWith(user: String = "",
+                    tenant: String = "",
+                    appName: String = "",
+                    appInstanceId: String = "",
+                    action: Callable<T>) : T {
 
         val userBefore = controller?.getCurrentUser() ?: ""
         val tenantBefore = controller?.getCurrentTenant() ?: ""
+
+        val ctx = context.get()
+
+        val appNameBefore = ctx.appName
+        val appInstanceIdBefore = ctx.appInstanceId
 
         return try {
 
             isInContext.set(true)
 
-            currentUser.set(controller?.setCurrentUser(user) ?: user)
-            currentUser.set(controller?.setCurrentTenant(tenant) ?: tenant)
+            ctx.currentUser = controller?.setCurrentUser(user) ?: user
+            ctx.currentTenant = controller?.setCurrentTenant(tenant) ?: tenant
+            ctx.appName = appName
+            ctx.appInstanceId = appInstanceId
 
-            callable.call()
+            action.call()
 
         } finally {
 
             isInContext.set(false)
 
-            currentUser.set(userBefore)
-            currentTenant.set(tenantBefore)
+            ctx.currentUser = userBefore
+            ctx.currentTenant = tenantBefore
+            ctx.appName = appNameBefore
+            ctx.appInstanceId = appInstanceIdBefore
 
             controller?.setCurrentUser(userBefore)
             controller?.setCurrentTenant(tenantBefore)
         }
     }
+
+    data class CtxState(
+        var currentUser: String = "",
+        var currentTenant: String = "",
+        var appName: String = "",
+        var appInstanceId: String = ""
+    )
 }
