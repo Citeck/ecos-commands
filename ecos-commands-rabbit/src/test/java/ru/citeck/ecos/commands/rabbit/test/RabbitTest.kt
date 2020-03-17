@@ -1,7 +1,6 @@
 package ru.citeck.ecos.commands.rabbit.test
 
 import com.github.fridujo.rabbitmq.mock.MockConnectionFactory
-import com.rabbitmq.client.Channel
 import com.rabbitmq.client.ConnectionFactory
 import ecos.com.fasterxml.jackson210.databind.node.NullNode
 import org.junit.jupiter.api.Test
@@ -40,11 +39,9 @@ class RabbitTest {
         factory.host = "localhost"
         factory.username = "admin"
         factory.password = "admin"
-        val connection = factory.newConnection()
-        val channel = connection.createChannel()
 
-        val app0 = App0(channel)
-        val app1 = App1(channel)
+        val app0 = App0(factory)
+        val app1 = App1(factory)
 
         app0.commandsService.addExecutor(GetAppInfoExecutor(app0))
 
@@ -161,7 +158,7 @@ class RabbitTest {
         val element: String
     )
 
-    class App0(private val channel: Channel) : CommandsServiceFactory() {
+    class App0(private val conntectionFactory: ConnectionFactory) : CommandsServiceFactory() {
 
         init {
             remoteCommandsService
@@ -175,13 +172,13 @@ class RabbitTest {
         }
 
         override fun createRemoteCommandsService(): RemoteCommandsService {
-            val service = RabbitCommandsService(this, channel)
+            val service = RabbitCommandsService(this, conntectionFactory)
             service.init()
             return service
         }
     }
 
-    class App1(private val channel: Channel) : CommandsServiceFactory() {
+    class App1(private val conntectionFactory: ConnectionFactory) : CommandsServiceFactory() {
 
         init {
             remoteCommandsService
@@ -195,7 +192,7 @@ class RabbitTest {
         }
 
         override fun createRemoteCommandsService(): RemoteCommandsService {
-            val service = RabbitCommandsService(this, channel)
+            val service = RabbitCommandsService(this, conntectionFactory)
             service.init()
             return service
         }

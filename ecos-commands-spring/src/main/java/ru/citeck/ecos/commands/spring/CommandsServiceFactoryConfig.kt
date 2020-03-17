@@ -66,13 +66,7 @@ open class CommandsServiceFactoryConfig : CommandsServiceFactory() {
             connectionFactory.username = mqProps.username
             connectionFactory.password = mqProps.password
 
-            try {
-                val connection = connectionFactory.newConnection()
-                val channel = connection.createChannel()
-                return RabbitCommandsService(this, channel)
-            } catch (e: Exception) {
-                log.error("Cannot configure connection to RabbitMQ", e)
-            }
+            return RabbitCommandsService(this, connectionFactory)
         }
 
         log.warn("Rabbit mq host is null. Remote commands will not be available")
