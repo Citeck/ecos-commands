@@ -2,7 +2,6 @@ package ru.citeck.ecos.commands
 
 import mu.KotlinLogging
 import ru.citeck.ecos.commands.annotation.CommandType
-import ru.citeck.ecos.commands.context.CommandCtxManager
 import ru.citeck.ecos.commands.dto.CommandConfig
 import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandResult
@@ -47,6 +46,7 @@ class CommandsService(factory: CommandsServiceFactory) {
     private val props = factory.properties
     private val remote by lazy { factory.remoteCommandsService }
     private val txnManager = factory.transactionManager
+    private val ctxManager = factory.commandCtxManager
 
     private val executors = ConcurrentHashMap<String, ExecutorInfo>()
 
@@ -87,12 +87,12 @@ class CommandsService(factory: CommandsServiceFactory) {
     }
 
     fun execute(block: CommandBuilder.() -> Unit) : Future<CommandResult> {
-        val (command, config) = CommandBuilder(props).apply(block).build()
+        val (command, config) = CommandBuilder(props, ctxManager.getCurrentUser()).apply(block).build()
         return execute(command, config)
     }
 
     fun executeForGroup(block: CommandBuilder.() -> Unit) : Future<List<CommandResult>> {
-        val builder = CommandBuilder(props)
+        val builder = CommandBuilder(props, ctxManager.getCurrentUser())
         builder.ttl = Duration.ofSeconds(2)
         val (command, config) = builder.apply(block).build()
         return executeForGroup(command, config)
@@ -114,15 +114,17 @@ class CommandsService(factory: CommandsServiceFactory) {
         val errors = ArrayList<CommandError>()
 
         val resultObj : Any? = try {
-            txnManager.doInTransaction(Callable {
-                CommandCtxManager.runWith(
-                    user = command.user,
-                    tenant = command.tenant,
-                    appName = command.sourceApp,
-                    appInstanceId = command.sourceAppId,
-                    action = Callable { executorInfo.executor.execute(executorCommand) }
-                )
-            })
+            ctxManager.runWith(
+                user = command.user,
+                tenant = command.tenant,
+                appName = command.sourceApp,
+                appInstanceId = command.sourceAppId,
+                action = Callable {
+                    txnManager.doInTransaction(
+                        Callable { executorInfo.executor.execute(executorCommand) }
+                    )
+                }
+            )
         } catch (e : Exception) {
             log.error("Command execution error", e)
             errors.add(CommandErrorUtils.convertException(e))
@@ -184,12 +186,11 @@ class CommandsService(factory: CommandsServiceFactory) {
         val commandType: KType
     )
 
-    class CommandBuilder(props: CommandsProperties) {
+    class CommandBuilder(props: CommandsProperties, val user: String) {
 
         var id: String = UUID.randomUUID().toString()
         var tenant: String = ""
         var time: Instant = Instant.now()
-        var user: String = CommandCtxManager.getCurrentUser()
 
         var sourceApp: String = props.appName
         var sourceAppId: String = props.appInstanceId
