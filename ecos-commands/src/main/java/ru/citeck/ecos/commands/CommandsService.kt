@@ -57,11 +57,11 @@ class CommandsService(factory: CommandsServiceFactory) {
         }
     }
 
-    fun executeRemoteSync(command: Any, remoteTargetApp: String) : CommandResult {
+    fun executeSync(command: Any, targetApp: String) : CommandResult {
         return executeSync {
             body = Json.mapper.toJson(command)
             type = needCommandType(command)
-            targetApp = remoteTargetApp
+            this.targetApp = targetApp
         }
     }
 
@@ -72,11 +72,11 @@ class CommandsService(factory: CommandsServiceFactory) {
         }
     }
 
-    fun executeRemoteForGroupSync(command: Any, remoteTargetApp: String) : List<CommandResult> {
+    fun executeForGroupSync(command: Any, targetApp: String) : List<CommandResult> {
         return executeForGroupSync {
             body = Json.mapper.toJson(command)
             type = needCommandType(command)
-            targetApp = remoteTargetApp
+            this.targetApp = targetApp
         }
     }
 
