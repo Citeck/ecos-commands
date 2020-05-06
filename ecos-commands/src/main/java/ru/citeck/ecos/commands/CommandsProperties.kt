@@ -6,4 +6,6 @@ class CommandsProperties {
     var appInstanceId = ""
 
     var commandTimeoutMs = 60_000L
+
+    var rabbitChannelsCount = 2
 }

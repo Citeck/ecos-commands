@@ -13,6 +13,7 @@ import ru.citeck.ecos.commands.utils.WeakValuesMap
 import java.lang.IllegalArgumentException
 import java.util.*
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.schedule
@@ -53,15 +54,19 @@ class RabbitCommandsService(
                 var connection: Connection? = null
 
                 try {
-                    connection = connectionFactory.newConnection()
-                    val channel = connection.createChannel()
+                    val pool = Executors.newFixedThreadPool(factory.properties.rabbitChannelsCount)
+                    connection = connectionFactory.newConnection(pool)
 
-                    rabbitContext = RabbitContext(
-                        channel,
-                        { onCommandReceived(it) },
-                        { onResultReceived(it) },
-                        factory.properties
-                    )
+                    repeat(factory.properties.rabbitChannelsCount) {
+                        val channel = connection.createChannel()
+
+                        rabbitContext = RabbitContext(
+                                channel,
+                                { onCommandReceived(it) },
+                                { onResultReceived(it) },
+                                factory.properties
+                        )
+                    }
                     break
 
                 } catch (e: Exception) {

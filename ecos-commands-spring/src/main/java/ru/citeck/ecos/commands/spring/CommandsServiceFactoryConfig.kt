@@ -31,6 +31,9 @@ open class CommandsServiceFactoryConfig : CommandsServiceFactory() {
     @Value("\${eureka.instance.instanceId:}")
     private lateinit var appInstanceId: String
 
+    @Value("\${commands.rabbitmq.channelsCount:2}")
+    private var rabbitChannelsCount: Int? = null
+
     @Bean
     override fun createCommandsService(): CommandsService {
         return super.createCommandsService()
@@ -49,6 +52,9 @@ open class CommandsServiceFactoryConfig : CommandsServiceFactory() {
         }
         if (props.appInstanceId.isBlank()) {
             props.appInstanceId = appInstanceId
+        }
+        if (rabbitChannelsCount != null) {
+            props.rabbitChannelsCount = rabbitChannelsCount?:2
         }
         return props
     }
