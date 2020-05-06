@@ -7,5 +7,5 @@ class CommandsProperties {
 
     var commandTimeoutMs = 60_000L
 
-    var rabbitChannelsCount = 4
+    var concurrentCommandConsumers = 4
 }

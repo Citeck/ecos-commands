@@ -54,10 +54,10 @@ class RabbitCommandsService(
                 var connection: Connection? = null
 
                 try {
-                    val pool = Executors.newFixedThreadPool(factory.properties.rabbitChannelsCount)
+                    val pool = Executors.newFixedThreadPool(factory.properties.concurrentCommandConsumers)
                     connection = connectionFactory.newConnection(pool)
 
-                    repeat(factory.properties.rabbitChannelsCount) {
+                    repeat(factory.properties.concurrentCommandConsumers) {
                         val channel = connection.createChannel()
 
                         rabbitContext = RabbitContext(
