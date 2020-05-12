@@ -38,11 +38,12 @@ class RabbitCommandsService(
     private val timer = Timer("RabbitCommandsTimer", false)
 
     private var initialized = false
+    private val initializedFuture = CompletableFuture<Boolean>()
 
-    override fun init() {
+    override fun init() : Future<Boolean> {
 
         if (initialized) {
-            return
+            return initializedFuture
         }
 
         thread(start = true, isDaemon = false, name = "Commands rabbit connection initializer") {
@@ -67,6 +68,8 @@ class RabbitCommandsService(
                                 factory.properties
                         )
                     }
+
+                    initializedFuture.complete(true)
                     break
 
                 } catch (e: Exception) {
@@ -94,6 +97,7 @@ class RabbitCommandsService(
         }
 
         initialized = true
+        return initializedFuture
     }
 
     private fun onResultReceived(result: CommandResult) {
