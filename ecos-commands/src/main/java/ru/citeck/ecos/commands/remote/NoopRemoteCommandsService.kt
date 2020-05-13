@@ -22,7 +22,8 @@ class NoopRemoteCommandsService(factory: CommandsServiceFactory) : RemoteCommand
         val log: Logger = LoggerFactory.getLogger(NoopRemoteCommandsService::class.java)
     }
 
-    override fun init() {
+    override fun init() : Future<Boolean> {
+        return CompletableFuture.completedFuture(false)
     }
 
     override fun execute(command: Command, config: CommandConfig) : Future<CommandResult> {

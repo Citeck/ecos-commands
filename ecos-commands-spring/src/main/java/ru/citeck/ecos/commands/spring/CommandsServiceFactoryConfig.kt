@@ -1,6 +1,5 @@
 package ru.citeck.ecos.commands.spring
 
-import com.rabbitmq.client.ConnectionFactory
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -23,7 +22,7 @@ open class CommandsServiceFactoryConfig : CommandsServiceFactory() {
     }
 
     private var props = CommandsProperties()
-    private lateinit var mqProps: RabbitMqConnectionProperties
+    private lateinit var connectionProvider: CommandsConnectionFactoryProvider
 
     @Value("\${spring.application.name:}")
     private lateinit var appName: String
@@ -56,19 +55,10 @@ open class CommandsServiceFactoryConfig : CommandsServiceFactory() {
     @Bean
     override fun createRemoteCommandsService(): RemoteCommandsService {
 
-        val host = mqProps.host
-
-        if (host != null && host.isNotBlank()) {
-
-            val connectionFactory = ConnectionFactory()
-            connectionFactory.isAutomaticRecoveryEnabled = true
-            connectionFactory.host = mqProps.host
-            connectionFactory.username = mqProps.username
-            connectionFactory.password = mqProps.password
-
+        val connectionFactory = connectionProvider.getConnectionFactory()
+        if (connectionFactory != null) {
             return RabbitCommandsService(this, connectionFactory)
         }
-
         log.warn("Rabbit mq host is null. Remote commands will not be available")
         return super.createRemoteCommandsService()
     }
@@ -79,7 +69,7 @@ open class CommandsServiceFactoryConfig : CommandsServiceFactory() {
     }
 
     @Autowired
-    fun setMqProperties(props: RabbitMqConnectionProperties) {
-        this.mqProps = props
+    fun setCommandsConnectionProvider(connectionProvider: CommandsConnectionFactoryProvider) {
+        this.connectionProvider = connectionProvider
     }
 }
