@@ -33,8 +33,10 @@ data class CommandResult(
         return Json.mapper.convert(command.body, type)
     }
 
-    fun throwPrimaryErrorIfNotNull() {
+    @JvmOverloads
+    fun throwPrimaryErrorIfNotNull(actionIfErrorIsNotNull: Runnable? = null) {
         if (primaryError != null) {
+            actionIfErrorIsNotNull?.run()
             CommandsService.log.error { "Throw error from command result: $this" }
             throw primaryError;
         }
