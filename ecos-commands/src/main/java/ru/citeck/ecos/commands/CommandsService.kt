@@ -128,6 +128,7 @@ class CommandsService(factory: CommandsServiceFactory) {
         val started = Instant.now()
 
         val errors = ArrayList<CommandError>()
+        var primaryError: Throwable? = null
 
         val resultObj : Any? = try {
             ctxManager.runWith(
@@ -141,7 +142,8 @@ class CommandsService(factory: CommandsServiceFactory) {
                     )
                 }
             )
-        } catch (e : Exception) {
+        } catch (e : Throwable) {
+            primaryError = e
             log.error("Command execution error", e)
             errors.add(CommandErrorUtils.convertException(e))
             null
@@ -155,7 +157,8 @@ class CommandsService(factory: CommandsServiceFactory) {
             result = Json.mapper.toJson(resultObj),
             errors = errors,
             appName = props.appName,
-            appInstanceId = props.appInstanceId
+            appInstanceId = props.appInstanceId,
+            primaryError = primaryError
         )
     }
 

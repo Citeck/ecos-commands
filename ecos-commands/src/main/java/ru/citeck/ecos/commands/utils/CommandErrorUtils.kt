@@ -5,7 +5,7 @@ import java.util.*
 
 object CommandErrorUtils {
 
-    fun convertException(exception: Exception): CommandError {
+    fun convertException(exception: Throwable): CommandError {
 
         var throwable: Throwable? = exception
         while (throwable!!.cause != null) {
