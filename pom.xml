@@ -21,7 +21,7 @@
         <kotlin.version>1.3.61</kotlin.version>
         <kotlin.logging.version>1.7.8</kotlin.logging.version>
 
-        <ecos.commons.version>1.7.0-SNAPSHOT</ecos.commons.version>
+        <ecos.commons.version>1.7.0</ecos.commons.version>
         <ecos.jackson.version>2.10.4.3</ecos.jackson.version>
 
     </properties>
