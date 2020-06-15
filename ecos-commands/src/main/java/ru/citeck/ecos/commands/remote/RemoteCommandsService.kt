@@ -7,8 +7,6 @@ import java.util.concurrent.Future
 
 interface RemoteCommandsService {
 
-    fun init() : Future<Boolean>
-
     fun execute(command: Command, config: CommandConfig) : Future<CommandResult>
 
     fun executeForGroup(command: Command, config: CommandConfig) : Future<List<CommandResult>>

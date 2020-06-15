@@ -30,6 +30,12 @@
         </dependency>
 
         <dependency>
+            <groupId>ru.citeck.ecos.commons</groupId>
+            <artifactId>ecos-commons-rabbitmq</artifactId>
+            <version>${ecos.commons.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>com.rabbitmq</groupId>
             <artifactId>amqp-client</artifactId>
             <version>${amqp-client.version}</version>

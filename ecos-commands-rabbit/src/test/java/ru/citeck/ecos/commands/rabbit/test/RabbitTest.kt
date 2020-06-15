@@ -8,6 +8,7 @@ import ru.citeck.ecos.commands.*
 import ru.citeck.ecos.commands.annotation.CommandType
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
+import ru.citeck.ecos.commons.rabbit.EcosRabbitConnection
 import java.lang.RuntimeException
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
@@ -39,9 +40,11 @@ class RabbitTest {
         factory.host = "localhost"
         factory.username = "admin"
         factory.password = "admin"
+        val ecosRabbitConnection = EcosRabbitConnection(factory)
+        ecosRabbitConnection.waitUntilReady(5000)
 
-        val app0 = App0(factory)
-        val app1 = App1(factory)
+        val app0 = App0(ecosRabbitConnection)
+        val app1 = App1(ecosRabbitConnection)
 
         app0.commandsService.addExecutor(GetAppInfoExecutor(app0))
 
@@ -158,7 +161,7 @@ class RabbitTest {
         val element: String
     )
 
-    class App0(private val conntectionFactory: ConnectionFactory) : CommandsServiceFactory() {
+    class App0(private val conntectionFactory: EcosRabbitConnection) : CommandsServiceFactory() {
 
         init {
             remoteCommandsService
@@ -172,13 +175,11 @@ class RabbitTest {
         }
 
         override fun createRemoteCommandsService(): RemoteCommandsService {
-            val service = RabbitCommandsService(this, conntectionFactory)
-            service.init()
-            return service
+            return RabbitCommandsService(this, conntectionFactory)
         }
     }
 
-    class App1(private val conntectionFactory: ConnectionFactory) : CommandsServiceFactory() {
+    class App1(private val conntectionFactory: EcosRabbitConnection) : CommandsServiceFactory() {
 
         init {
             remoteCommandsService
@@ -192,9 +193,7 @@ class RabbitTest {
         }
 
         override fun createRemoteCommandsService(): RemoteCommandsService {
-            val service = RabbitCommandsService(this, conntectionFactory)
-            service.init()
-            return service
+            return RabbitCommandsService(this, conntectionFactory)
         }
     }
 }

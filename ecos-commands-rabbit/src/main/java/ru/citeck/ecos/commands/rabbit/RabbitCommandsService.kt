@@ -1,7 +1,5 @@
 package ru.citeck.ecos.commands.rabbit
 
-import com.rabbitmq.client.Connection
-import com.rabbitmq.client.ConnectionFactory
 import mu.KotlinLogging
 import ru.citeck.ecos.commands.CommandsService
 import ru.citeck.ecos.commands.CommandsServiceFactory
@@ -10,18 +8,18 @@ import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
 import ru.citeck.ecos.commands.utils.WeakValuesMap
+import ru.citeck.ecos.commons.rabbit.EcosRabbitConnection
 import java.lang.IllegalArgumentException
 import java.util.*
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
+import java.util.function.Consumer
 import kotlin.concurrent.schedule
-import kotlin.concurrent.thread
 
 class RabbitCommandsService(
     private val factory: CommandsServiceFactory,
-    private val connectionFactory: ConnectionFactory
+    private val rabbitConnection: EcosRabbitConnection
 ) : RemoteCommandsService {
 
     companion object {
@@ -37,67 +35,18 @@ class RabbitCommandsService(
 
     private val timer = Timer("RabbitCommandsTimer", false)
 
-    private var initialized = false
-    private val initializedFuture = CompletableFuture<Boolean>()
+    init {
+        repeat(factory.properties.concurrentCommandConsumers) {
 
-    override fun init() : Future<Boolean> {
-
-        if (initialized) {
-            return initializedFuture
+            rabbitConnection.doWithNewChannel(Consumer { channel ->
+                rabbitContext = RabbitContext(
+                    channel,
+                    { onCommandReceived(it) },
+                    { onResultReceived(it) },
+                    factory.properties
+                )
+            })
         }
-
-        thread(start = true, isDaemon = false, name = "Commands rabbit connection initializer") {
-
-            var tryWithoutLogErrorStartTime = System.currentTimeMillis()
-
-            while (true) {
-
-                var connection: Connection? = null
-
-                try {
-                    val pool = Executors.newFixedThreadPool(factory.properties.concurrentCommandConsumers)
-                    connection = connectionFactory.newConnection(pool)
-
-                    repeat(factory.properties.concurrentCommandConsumers) {
-                        val channel = connection.createChannel()
-
-                        rabbitContext = RabbitContext(
-                                channel,
-                                { onCommandReceived(it) },
-                                { onResultReceived(it) },
-                                factory.properties
-                        )
-                    }
-
-                    initializedFuture.complete(true)
-                    break
-
-                } catch (e: Exception) {
-                    try {
-                        connection?.close()
-                    } catch (e: Exception) {
-                        log.error { "Connection close error: " + e.message }
-                    }
-                    val msg = "Cannot configure connection to RabbitMQ"
-                    if (System.currentTimeMillis() - tryWithoutLogErrorStartTime > 120_000) {
-                        tryWithoutLogErrorStartTime = System.currentTimeMillis()
-                        log.error(e) { msg }
-                    } else {
-                        var ex: Throwable
-                        var cause: Throwable? = e
-                        while (cause != null) {
-                            ex = cause
-                            cause = ex.cause
-                        }
-                        log.error(msg + ": '" + e.message + "'")
-                    }
-                    Thread.sleep(20_000)
-                }
-            }
-        }
-
-        initialized = true
-        return initializedFuture
     }
 
     private fun onResultReceived(result: CommandResult) {

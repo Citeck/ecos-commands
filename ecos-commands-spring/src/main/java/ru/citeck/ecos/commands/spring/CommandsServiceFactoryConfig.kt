@@ -13,6 +13,7 @@ import ru.citeck.ecos.commands.CommandsService
 import ru.citeck.ecos.commands.CommandsServiceFactory
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
+import ru.citeck.ecos.commons.rabbit.EcosRabbitConnectionProvider
 
 @Configuration
 open class CommandsServiceFactoryConfig : CommandsServiceFactory() {
@@ -22,7 +23,7 @@ open class CommandsServiceFactoryConfig : CommandsServiceFactory() {
     }
 
     private var props = CommandsProperties()
-    private lateinit var connectionProvider: CommandsConnectionFactoryProvider
+    private lateinit var connectionProvider: EcosRabbitConnectionProvider
 
     @Value("\${spring.application.name:}")
     private lateinit var appName: String
@@ -37,7 +38,7 @@ open class CommandsServiceFactoryConfig : CommandsServiceFactory() {
 
     @EventListener
     fun onApplicationEvent(event: ContextRefreshedEvent) {
-        createRemoteCommandsService().init()
+        createRemoteCommandsService()
     }
 
     @Bean
@@ -55,7 +56,7 @@ open class CommandsServiceFactoryConfig : CommandsServiceFactory() {
     @Bean
     override fun createRemoteCommandsService(): RemoteCommandsService {
 
-        val connectionFactory = connectionProvider.getConnectionFactory()
+        val connectionFactory = connectionProvider.getConnection()
         if (connectionFactory != null) {
             return RabbitCommandsService(this, connectionFactory)
         }
@@ -69,7 +70,7 @@ open class CommandsServiceFactoryConfig : CommandsServiceFactory() {
     }
 
     @Autowired
-    fun setCommandsConnectionProvider(connectionProvider: CommandsConnectionFactoryProvider) {
+    fun setCommandsConnectionProvider(connectionProvider: EcosRabbitConnectionProvider) {
         this.connectionProvider = connectionProvider
     }
 }
