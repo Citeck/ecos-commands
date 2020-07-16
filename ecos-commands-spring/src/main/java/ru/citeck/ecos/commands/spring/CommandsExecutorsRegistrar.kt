@@ -1,6 +1,7 @@
 package ru.citeck.ecos.commands.spring
 
 import mu.KotlinLogging
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Configuration
 import ru.citeck.ecos.commands.CommandExecutor
 import ru.citeck.ecos.commands.CommandsService
@@ -8,7 +9,7 @@ import javax.annotation.PostConstruct
 
 @Configuration
 open class CommandsExecutorsRegistrar(
-    val executors: List<CommandExecutor<*>>,
+    @Autowired(required = false) val executors: List<CommandExecutor<*>>?,
     val commandsService: CommandsService
 ) {
 
@@ -16,10 +17,9 @@ open class CommandsExecutorsRegistrar(
 
     @PostConstruct
     fun register() {
-        executors.forEach {
+        executors?.forEach {
             log.info { "Register command executor: ${it.javaClass}" }
             commandsService.addExecutor(it)
         }
     }
 }
-
