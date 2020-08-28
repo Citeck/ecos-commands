@@ -8,7 +8,7 @@ import ru.citeck.ecos.commands.*
 import ru.citeck.ecos.commands.annotation.CommandType
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
-import ru.citeck.ecos.commons.rabbit.EcosRabbitConnection
+import ru.citeck.ecos.rabbitmq.EcosRabbitConnection
 import java.lang.RuntimeException
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals

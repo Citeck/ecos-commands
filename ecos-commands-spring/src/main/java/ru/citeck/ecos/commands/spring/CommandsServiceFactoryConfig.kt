@@ -13,7 +13,7 @@ import ru.citeck.ecos.commands.CommandsService
 import ru.citeck.ecos.commands.CommandsServiceFactory
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
-import ru.citeck.ecos.commons.rabbit.EcosRabbitConnectionProvider
+import ru.citeck.ecos.rabbitmq.EcosRabbitConnectionProvider
 
 @Configuration
 open class CommandsServiceFactoryConfig : CommandsServiceFactory() {

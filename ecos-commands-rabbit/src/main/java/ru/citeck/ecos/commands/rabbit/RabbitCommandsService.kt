@@ -8,7 +8,7 @@ import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
 import ru.citeck.ecos.commands.utils.WeakValuesMap
-import ru.citeck.ecos.commons.rabbit.EcosRabbitConnection
+import ru.citeck.ecos.rabbitmq.EcosRabbitConnection
 import java.lang.IllegalArgumentException
 import java.util.*
 import java.util.concurrent.CompletableFuture

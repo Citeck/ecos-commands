@@ -8,7 +8,7 @@ import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.utils.CommandErrorUtils
 import ru.citeck.ecos.commons.json.Json
-import ru.citeck.ecos.commons.rabbit.EcosRabbitChannel
+import ru.citeck.ecos.rabbitmq.EcosRabbitChannel
 import kotlin.collections.HashMap
 
 class RabbitContext(
