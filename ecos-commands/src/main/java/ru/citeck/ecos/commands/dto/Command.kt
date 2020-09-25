@@ -3,6 +3,7 @@ package ru.citeck.ecos.commands.dto
 import ecos.com.fasterxml.jackson210.databind.JsonNode
 import ecos.com.fasterxml.jackson210.databind.node.NullNode
 import ru.citeck.ecos.commands.TransactionType
+import java.time.Duration
 
 data class Command(
 
@@ -18,5 +19,7 @@ data class Command(
     val type: String,
     val body: JsonNode = NullNode.instance,
 
-    val transaction: TransactionType = TransactionType.REQUIRED
+    val transaction: TransactionType = TransactionType.REQUIRED,
+
+    val ttl: Duration
 )

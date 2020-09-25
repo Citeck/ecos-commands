@@ -3,7 +3,6 @@ package ru.citeck.ecos.commands.rabbit
 import com.rabbitmq.client.BuiltinExchangeType
 import org.slf4j.LoggerFactory
 import ru.citeck.ecos.commands.CommandsProperties
-import ru.citeck.ecos.commands.dto.CommandConfig
 import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.utils.CommandErrorUtils
@@ -73,9 +72,9 @@ class RabbitContext(
         publishMsg(resQueue, result)
     }
 
-    fun sendCommand(command: Command, config: CommandConfig) {
+    fun sendCommand(command: Command) {
         val comQueue = COM_QUEUE.format(command.targetApp)
-        publishMsg(comQueue, command, emptyMap(), config.ttl.toMillis())
+        publishMsg(comQueue, command, emptyMap(), command.ttl.toMillis())
     }
 
     private fun toErrorQueue(message: Any, headers: Map<String, Any>, reason: Exception) {

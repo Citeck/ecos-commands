@@ -4,7 +4,6 @@ import ecos.com.fasterxml.jackson210.databind.node.NullNode
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import ru.citeck.ecos.commands.CommandsServiceFactory
-import ru.citeck.ecos.commands.dto.CommandConfig
 import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.dto.CommandError
@@ -22,7 +21,7 @@ class NoopRemoteCommandsService(factory: CommandsServiceFactory) : RemoteCommand
         val log: Logger = LoggerFactory.getLogger(NoopRemoteCommandsService::class.java)
     }
 
-    override fun execute(command: Command, config: CommandConfig) : Future<CommandResult> {
+    override fun execute(command: Command) : Future<CommandResult> {
         val errorMsg = "Remote commands service is not defined. Command can't be executed"
         log.error("$errorMsg. Command: $command")
         return CompletableFuture.completedFuture(CommandResult(
@@ -40,7 +39,7 @@ class NoopRemoteCommandsService(factory: CommandsServiceFactory) : RemoteCommand
         ))
     }
 
-    override fun executeForGroup(command: Command, config: CommandConfig): Future<List<CommandResult>> {
-        return CompletableFuture.completedFuture(listOf(execute(command, config).get(1, TimeUnit.MINUTES)))
+    override fun executeForGroup(command: Command): Future<List<CommandResult>> {
+        return CompletableFuture.completedFuture(listOf(execute(command).get(1, TimeUnit.MINUTES)))
     }
 }

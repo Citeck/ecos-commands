@@ -3,7 +3,6 @@ package ru.citeck.ecos.commands.rabbit
 import mu.KotlinLogging
 import ru.citeck.ecos.commands.CommandsService
 import ru.citeck.ecos.commands.CommandsServiceFactory
-import ru.citeck.ecos.commands.dto.CommandConfig
 import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
@@ -66,8 +65,8 @@ class RabbitCommandsService(
         return commandsService.executeLocal(command)
     }
 
-    override fun executeForGroup(command: Command, config: CommandConfig): Future<List<CommandResult>> {
-        val ttlMs = config.ttl.toMillis()
+    override fun executeForGroup(command: Command): Future<List<CommandResult>> {
+        val ttlMs = command.ttl.toMillis()
         if (ttlMs <= 0 && ttlMs > TimeUnit.MINUTES.toMillis(10)) {
             throw IllegalArgumentException("Illegal ttl for group command: $ttlMs")
         }
@@ -77,7 +76,7 @@ class RabbitCommandsService(
             log.warn { "CommandsForGroup size is too bit. Potentially memory leak. Size: " + commandsForGroup.size() }
         }
         try {
-            rabbitContext.sendCommand(command, config)
+            rabbitContext.sendCommand(command)
         } catch (e: Exception) {
             commandsForGroup.remove(command.id)
             throw e
@@ -88,14 +87,14 @@ class RabbitCommandsService(
         return future
     }
 
-    override fun execute(command: Command, config: CommandConfig): Future<CommandResult> {
+    override fun execute(command: Command): Future<CommandResult> {
         val future = CompletableFuture<CommandResult>()
         commands.put(command.id, future)
         if (commands.size() > 10_000) {
             log.warn { "Commands size is too big. Potentially memory leak. Size: " + commands.size() }
         }
         try {
-            rabbitContext.sendCommand(command, config)
+            rabbitContext.sendCommand(command)
         } catch (e: Exception) {
             commands.remove(command.id)
             throw e

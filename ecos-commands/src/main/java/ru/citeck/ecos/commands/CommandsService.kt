@@ -2,7 +2,6 @@ package ru.citeck.ecos.commands
 
 import mu.KotlinLogging
 import ru.citeck.ecos.commands.annotation.CommandType
-import ru.citeck.ecos.commands.dto.CommandConfig
 import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.dto.CommandError
@@ -50,6 +49,10 @@ class CommandsService(factory: CommandsServiceFactory) {
 
     private val executors = ConcurrentHashMap<String, ExecutorInfo>()
 
+    fun buildCommand(block: CommandBuilder.() -> Unit) : Command {
+        return CommandBuilder(props, ctxManager.getCurrentUser()).apply(block).build()
+    }
+
     fun executeSync(command: Any) : CommandResult {
         return executeSync {
             body = Json.mapper.toJson(command)
@@ -81,7 +84,11 @@ class CommandsService(factory: CommandsServiceFactory) {
     }
 
     fun executeSync(block: CommandBuilder.() -> Unit) : CommandResult {
-        return execute(block).get(props.commandTimeoutMs, TimeUnit.MILLISECONDS)
+        return executeSync(buildCommand(block))
+    }
+
+    fun executeSync(command: Command) : CommandResult {
+        return execute(command).get(props.commandTimeoutMs, TimeUnit.MILLISECONDS)
     }
 
     fun executeForGroupSync(block: CommandBuilder.() -> Unit) : List<CommandResult> {
@@ -103,25 +110,30 @@ class CommandsService(factory: CommandsServiceFactory) {
     }
 
     fun execute(block: CommandBuilder.() -> Unit) : Future<CommandResult> {
-        val (command, config) = CommandBuilder(props, ctxManager.getCurrentUser()).apply(block).build()
-        return execute(command, config)
+        return execute(buildCommand(block))
     }
 
     fun executeForGroup(block: CommandBuilder.() -> Unit) : Future<List<CommandResult>> {
         val builder = CommandBuilder(props, ctxManager.getCurrentUser())
         builder.ttl = Duration.ofSeconds(2)
         val (command, config) = builder.apply(block).build()
-        return executeForGroup(command, config)
+        return executeForGroup(command)
     }
 
     fun executeLocal(command: Command) : CommandResult {
 
-        val executorInfo = executors[command.type] ?: throw ExecutorNotFound(command.type)
+        val executorInfo = executors[command.type] ?: executors["*"] ?: throw ExecutorNotFound(command.type)
 
         var executorCommand: Any? = null
-        if (executorInfo.commandType.classifier !== Any::class) {
+
+        if (executorInfo.commandType == Command::class) {
+
+            executorCommand = command
+
+        } else if (executorInfo.commandType !== Any::class) {
+
             @Suppress("UNCHECKED_CAST")
-            val commandClass = executorInfo.commandType.classifier as KClass<Any>
+            val commandClass = executorInfo.commandType
             executorCommand = Json.mapper.convert(command.body, commandClass.java)
         }
 
@@ -162,12 +174,12 @@ class CommandsService(factory: CommandsServiceFactory) {
         )
     }
 
-    fun executeForGroup(command: Command, config: CommandConfig) : Future<List<CommandResult>> {
-        val future = remote.executeForGroup(command, config)
+    fun executeForGroup(command: Command) : Future<List<CommandResult>> {
+        val future = remote.executeForGroup(command)
         return CompletableFuture.supplyAsync { future.get(props.commandTimeoutMs, TimeUnit.MILLISECONDS) }
     }
 
-    fun execute(command: Command, config: CommandConfig) : Future<CommandResult> {
+    fun execute(command: Command) : Future<CommandResult> {
 
         return if (command.targetApp == props.appName) {
 
@@ -175,7 +187,7 @@ class CommandsService(factory: CommandsServiceFactory) {
 
         } else {
 
-            val future = remote.execute(command, config)
+            val future = remote.execute(command)
             CompletableFuture.supplyAsync { future.get(props.commandTimeoutMs, TimeUnit.MILLISECONDS) }
         }
     }
@@ -188,12 +200,23 @@ class CommandsService(factory: CommandsServiceFactory) {
             it.arguments[0].type
         }.first()!!
 
+        val classifier = type.classifier as? KClass<*>
+        if (classifier == null) {
+            log.warn { "Command type is not a class: $type" }
+            return
+        }
+
         @Suppress("UNCHECKED_CAST")
         executor as CommandExecutor<Any?>
 
-        val comType = (type.classifier as? KClass<*>)?.findAnnotation<CommandType>()?.value
+        if (classifier == Command::class) {
+            executors["*"] = ExecutorInfo(executor, classifier)
+            return
+        }
+
+        val comType = classifier.findAnnotation<CommandType>()?.value
         if (comType?.isNotBlank() == true) {
-            executors[comType] = ExecutorInfo(executor, type)
+            executors[comType] = ExecutorInfo(executor, classifier)
         } else {
             log.warn { "Command type is undefined. Please add CommandType annotation to CommandDto. " +
                 "Command executor will be ignored: ${executor::class.qualifiedName}" }
@@ -202,7 +225,7 @@ class CommandsService(factory: CommandsServiceFactory) {
 
     data class ExecutorInfo (
         val executor: CommandExecutor<Any?>,
-        val commandType: KType
+        val commandType: KClass<*>
     )
 
     class CommandBuilder(props: CommandsProperties, val user: String) {
@@ -220,8 +243,8 @@ class CommandsService(factory: CommandsServiceFactory) {
         var type: String? = null
         var body: Any? = null
 
-        fun build() : Pair<Command, CommandConfig> {
-            return Pair(Command(
+        fun build() : Command {
+            return Command(
                 id = id,
                 tenant = tenant,
                 time = time.toEpochMilli(),
@@ -231,10 +254,9 @@ class CommandsService(factory: CommandsServiceFactory) {
                 transaction = transaction,
                 targetApp = targetApp,
                 type = type ?: needCommandType(body),
-                body = Json.mapper.toJson(body)
-            ), CommandConfig(
+                body = Json.mapper.toJson(body),
                 ttl = ttl
-            ))
+            )
         }
     }
 }
