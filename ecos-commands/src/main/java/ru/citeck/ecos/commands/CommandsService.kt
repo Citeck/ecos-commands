@@ -18,7 +18,6 @@ import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 import kotlin.collections.ArrayList
 import kotlin.reflect.KClass
-import kotlin.reflect.KType
 import kotlin.reflect.full.findAnnotation
 
 private fun needCommandType(command: Any?) : String {
@@ -116,7 +115,7 @@ class CommandsService(factory: CommandsServiceFactory) {
     fun executeForGroup(block: CommandBuilder.() -> Unit) : Future<List<CommandResult>> {
         val builder = CommandBuilder(props, ctxManager.getCurrentUser())
         builder.ttl = Duration.ofSeconds(2)
-        val (command, config) = builder.apply(block).build()
+        val command = builder.apply(block).build()
         return executeForGroup(command)
     }
 
