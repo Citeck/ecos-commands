@@ -9,7 +9,7 @@ import ru.citeck.ecos.commands.CommandsServiceFactory
 import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
-import ru.citeck.ecos.rabbitmq.EcosRabbitConnection
+import ru.citeck.ecos.rabbitmq.RabbitMqConn
 import kotlin.test.assertEquals
 
 class AllCommandsExecutorTest {
@@ -31,11 +31,11 @@ class AllCommandsExecutorTest {
         factory.host = "localhost"
         factory.username = "admin"
         factory.password = "admin"
-        val ecosRabbitConnection = EcosRabbitConnection(factory)
-        ecosRabbitConnection.waitUntilReady(5000)
+        val RabbitMqConn = RabbitMqConn(factory)
+        RabbitMqConn.waitUntilReady(5000)
 
-        val app0 = App0(ecosRabbitConnection)
-        val app1 = App1(ecosRabbitConnection)
+        val app0 = App0(RabbitMqConn)
+        val app1 = App1(RabbitMqConn)
 
         app0.commandsService.addExecutor(AddElementExecutor())
 
@@ -70,7 +70,7 @@ class AllCommandsExecutorTest {
         }
     }
 
-    class App0(private val conntectionFactory: EcosRabbitConnection) : CommandsServiceFactory() {
+    class App0(private val conntectionFactory: RabbitMqConn) : CommandsServiceFactory() {
 
         init {
             remoteCommandsService
@@ -88,7 +88,7 @@ class AllCommandsExecutorTest {
         }
     }
 
-    class App1(private val conntectionFactory: EcosRabbitConnection) : CommandsServiceFactory() {
+    class App1(private val conntectionFactory: RabbitMqConn) : CommandsServiceFactory() {
 
         init {
             remoteCommandsService

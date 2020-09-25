@@ -7,7 +7,7 @@ import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
 import ru.citeck.ecos.commands.utils.WeakValuesMap
-import ru.citeck.ecos.rabbitmq.EcosRabbitConnection
+import ru.citeck.ecos.rabbitmq.RabbitMqConn
 import java.lang.IllegalArgumentException
 import java.util.*
 import java.util.concurrent.CompletableFuture
@@ -18,7 +18,7 @@ import kotlin.concurrent.schedule
 
 class RabbitCommandsService(
     private val factory: CommandsServiceFactory,
-    private val rabbitConnection: EcosRabbitConnection
+    private val rabbitConnection: RabbitMqConn
 ) : RemoteCommandsService {
 
     companion object {

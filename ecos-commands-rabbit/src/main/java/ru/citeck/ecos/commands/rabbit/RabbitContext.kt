@@ -7,11 +7,11 @@ import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.utils.CommandErrorUtils
 import ru.citeck.ecos.commons.json.Json
-import ru.citeck.ecos.rabbitmq.EcosRabbitChannel
+import ru.citeck.ecos.rabbitmq.RabbitMqChannel
 import kotlin.collections.HashMap
 
 class RabbitContext(
-    private val channel: EcosRabbitChannel,
+    private val channel: RabbitMqChannel,
     private val onCommand: (Command) -> CommandResult,
     private val onResult: (CommandResult) -> Unit,
     properties: CommandsProperties

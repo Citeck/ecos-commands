@@ -13,7 +13,7 @@ import ru.citeck.ecos.commands.CommandsService
 import ru.citeck.ecos.commands.CommandsServiceFactory
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
-import ru.citeck.ecos.rabbitmq.EcosRabbitConnectionProvider
+import ru.citeck.ecos.rabbitmq.RabbitMqConnProvider
 
 @Configuration
 open class CommandsServiceFactoryConfig : CommandsServiceFactory() {
@@ -23,7 +23,7 @@ open class CommandsServiceFactoryConfig : CommandsServiceFactory() {
     }
 
     private var props = CommandsProperties()
-    private lateinit var connectionProvider: EcosRabbitConnectionProvider
+    private lateinit var connectionProvider: RabbitMqConnProvider
 
     @Value("\${spring.application.name:}")
     private lateinit var appName: String
@@ -70,7 +70,7 @@ open class CommandsServiceFactoryConfig : CommandsServiceFactory() {
     }
 
     @Autowired
-    fun setCommandsConnectionProvider(connectionProvider: EcosRabbitConnectionProvider) {
+    fun setCommandsConnectionProvider(connectionProvider: RabbitMqConnProvider) {
         this.connectionProvider = connectionProvider
     }
 }
