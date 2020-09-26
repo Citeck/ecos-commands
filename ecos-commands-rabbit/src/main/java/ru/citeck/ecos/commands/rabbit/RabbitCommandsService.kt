@@ -57,16 +57,19 @@ class RabbitCommandsService(
         }
     }
 
-    private fun onCommandReceived(command: Command) : CommandResult {
+    private fun onCommandReceived(command: Command) : CommandResult? {
         if (command.targetApp != properties.appName && command.targetApp != "all") {
             throw RuntimeException("Incorrect target app name '${command.targetApp}'. " +
                                    "Expected: '${properties.appName}' OR 'all'")
+        }
+        if (command.targetApp == "all" && !properties.listenBroadcast) {
+            return null
         }
         return commandsService.executeLocal(command)
     }
 
     override fun executeForGroup(command: Command): Future<List<CommandResult>> {
-        val ttlMs = command.ttl.toMillis()
+        val ttlMs = command.ttl?.toMillis() ?: 0
         if (ttlMs <= 0 && ttlMs > TimeUnit.MINUTES.toMillis(10)) {
             throw IllegalArgumentException("Illegal ttl for group command: $ttlMs")
         }

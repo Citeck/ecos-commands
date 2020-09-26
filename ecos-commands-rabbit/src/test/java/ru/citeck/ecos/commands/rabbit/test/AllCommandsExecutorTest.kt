@@ -44,6 +44,7 @@ class AllCommandsExecutorTest {
             body = "test-test"
             type = "custom-type"
         }
+        val commandWithoutTtl = app1.commandsService.buildCommand(command) { ttl = null }
 
         app1.commandsService.executeSync(command)
         app1.commandsService.executeSync(command)
@@ -53,13 +54,14 @@ class AllCommandsExecutorTest {
             body = "test-test"
             type = "other command type"
         }
+        val command1WithoutTtl = app1.commandsService.buildCommand(command1) { ttl = null }
 
         app1.commandsService.executeSync(command1)
 
         assertEquals(3, elements.size)
-        assertEquals(command, elements[0])
-        assertEquals(command, elements[1])
-        assertEquals(command1, elements[2])
+        assertEquals(commandWithoutTtl, elements[0])
+        assertEquals(commandWithoutTtl, elements[1])
+        assertEquals(command1WithoutTtl, elements[2])
     }
 
     inner class AddElementExecutor : CommandExecutor<Command> {

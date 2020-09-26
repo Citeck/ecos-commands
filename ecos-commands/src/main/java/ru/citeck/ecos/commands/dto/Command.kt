@@ -1,5 +1,6 @@
 package ru.citeck.ecos.commands.dto
 
+import ecos.com.fasterxml.jackson210.annotation.JsonIgnore
 import ecos.com.fasterxml.jackson210.databind.JsonNode
 import ecos.com.fasterxml.jackson210.databind.node.NullNode
 import ru.citeck.ecos.commands.TransactionType
@@ -21,5 +22,6 @@ data class Command(
 
     val transaction: TransactionType = TransactionType.REQUIRED,
 
-    val ttl: Duration
+    @JsonIgnore
+    val ttl: Duration?
 )

@@ -49,7 +49,16 @@ class CommandsService(factory: CommandsServiceFactory) {
     private val executors = ConcurrentHashMap<String, ExecutorInfo>()
 
     fun buildCommand(block: CommandBuilder.() -> Unit) : Command {
-        return CommandBuilder(props, ctxManager.getCurrentUser()).apply(block).build()
+        return CommandBuilder(props, ctxManager.getCurrentUser())
+            .apply(block)
+            .build()
+    }
+
+    fun buildCommand(base: Command, block: CommandBuilder.() -> Unit) : Command {
+        return CommandBuilder(props, ctxManager.getCurrentUser())
+            .set(base)
+            .apply(block)
+            .build()
     }
 
     fun executeSync(command: Any) : CommandResult {
@@ -121,27 +130,28 @@ class CommandsService(factory: CommandsServiceFactory) {
 
     fun executeLocal(command: Command) : CommandResult {
 
-        val executorInfo = executors[command.type] ?: executors["*"] ?: throw ExecutorNotFound(command.type)
-
-        var executorCommand: Any? = null
-
-        if (executorInfo.commandType == Command::class) {
-
-            executorCommand = command
-
-        } else if (executorInfo.commandType !== Any::class) {
-
-            @Suppress("UNCHECKED_CAST")
-            val commandClass = executorInfo.commandType
-            executorCommand = Json.mapper.convert(command.body, commandClass.java)
-        }
-
         val started = Instant.now()
 
         val errors = ArrayList<CommandError>()
         var primaryError: Throwable? = null
 
-        val resultObj : Any? = try {
+        val resultObj = try {
+
+            val executorInfo = executors[command.type] ?: executors["*"] ?: throw ExecutorNotFound(command.type)
+
+            var executorCommand: Any? = null
+
+            if (executorInfo.commandType == Command::class) {
+
+                executorCommand = command
+
+            } else if (executorInfo.commandType !== Any::class) {
+
+                @Suppress("UNCHECKED_CAST")
+                val commandClass = executorInfo.commandType
+                executorCommand = Json.mapper.convert(command.body, commandClass.java)
+            }
+
             ctxManager.runWith(
                 user = command.user,
                 tenant = command.tenant,
@@ -151,8 +161,8 @@ class CommandsService(factory: CommandsServiceFactory) {
                     txnManager.doInTransaction(
                         Callable { executorInfo.executor.execute(executorCommand) }
                     )
-                }
-            )
+                })
+
         } catch (e : Throwable) {
             primaryError = e
             log.error("Command execution error", e)
@@ -236,11 +246,30 @@ class CommandsService(factory: CommandsServiceFactory) {
         var sourceApp: String = props.appName
         var sourceAppId: String = props.appInstanceId
         var transaction: TransactionType = TransactionType.REQUIRED
-        var ttl: Duration = Duration.ofMillis(props.commandTimeoutMs)
+        var ttl: Duration? = Duration.ofMillis(props.commandTimeoutMs)
 
         var targetApp: String = props.appName
         var type: String? = null
         var body: Any? = null
+
+        fun set(comm: Command) : CommandBuilder {
+
+            this.id = comm.id
+            this.tenant = comm.tenant
+            this.time = Instant.ofEpochMilli(comm.time)
+
+            this.sourceApp = comm.sourceApp
+            this.sourceAppId = comm.sourceAppId
+            this.transaction = comm.transaction
+
+            this.ttl = comm.ttl
+
+            this.targetApp = comm.targetApp
+            this.type = comm.type
+            this.body = comm.body
+
+            return this
+        }
 
         fun build() : Command {
             return Command(

@@ -8,4 +8,6 @@ class CommandsProperties {
     var commandTimeoutMs = 60_000L
 
     var concurrentCommandConsumers = 4
+
+    var listenBroadcast = true
 }

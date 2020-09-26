@@ -1,7 +1,7 @@
 package ru.citeck.ecos.commands.rabbit
 
 import com.rabbitmq.client.BuiltinExchangeType
-import org.slf4j.LoggerFactory
+import mu.KotlinLogging
 import ru.citeck.ecos.commands.CommandsProperties
 import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandResult
@@ -12,14 +12,14 @@ import kotlin.collections.HashMap
 
 class RabbitContext(
     private val channel: RabbitMqChannel,
-    private val onCommand: (Command) -> CommandResult,
+    private val onCommand: (Command) -> CommandResult?,
     private val onResult: (CommandResult) -> Unit,
-    properties: CommandsProperties
+    private val properties: CommandsProperties
 ) {
 
     companion object {
 
-        private val log = LoggerFactory.getLogger(RabbitContext::class.java)
+        private val log = KotlinLogging.logger {}
 
         private const val COM_EXCHANGE = "ecos-commands"
 
@@ -67,14 +67,14 @@ class RabbitContext(
     }
 
     private fun handleCommandMqMessage(command: Command) {
-        val result = onCommand.invoke(command)
+        val result = onCommand.invoke(command) ?: return
         val resQueue = getResQueueId(command.sourceApp, command.sourceAppId)
         publishMsg(resQueue, result)
     }
 
     fun sendCommand(command: Command) {
         val comQueue = COM_QUEUE.format(command.targetApp)
-        publishMsg(comQueue, command, emptyMap(), command.ttl.toMillis())
+        publishMsg(comQueue, command, emptyMap(), command.ttl?.toMillis() ?: properties.commandTimeoutMs)
     }
 
     private fun toErrorQueue(message: Any, headers: Map<String, Any>, reason: Exception) {
