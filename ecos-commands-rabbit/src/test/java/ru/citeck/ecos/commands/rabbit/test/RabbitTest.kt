@@ -97,7 +97,7 @@ class RabbitTest {
         val resultObj2 = result2.getResultAs(ByteArray::class.java)
         assertTrue(BYTES_RES.contentEquals(resultObj2!!))
 
-        val res = app0.commandsService.executeForGroupSync{
+        val res = app0.commandsService.executeForGroupSync {
             body = GetAppInfo()
             targetApp = "all"
         }.map {
@@ -130,7 +130,7 @@ class RabbitTest {
 
     inner class AddElementExecutor : CommandExecutor<AddElementCommand> {
 
-        override fun execute(command: AddElementCommand) : Any {
+        override fun execute(command: AddElementCommand): Any {
             if (command.element == EX_TEST_ELEM) {
                 throw RuntimeException(EX_TEST_MSG)
             }
@@ -141,7 +141,7 @@ class RabbitTest {
 
     inner class AddElementExecutor2 : CommandExecutor<AddElementCommand2> {
 
-        override fun execute(command: AddElementCommand2) : Any {
+        override fun execute(command: AddElementCommand2): Any {
             elements.add(command.element)
             return BYTES_RES
         }

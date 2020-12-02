@@ -37,14 +37,16 @@ class RabbitCommandsService(
     init {
         repeat(factory.properties.concurrentCommandConsumers) {
 
-            rabbitConnection.doWithNewChannel(Consumer { channel ->
-                rabbitContext = RabbitContext(
-                    channel,
-                    { onCommandReceived(it) },
-                    { onResultReceived(it) },
-                    factory.properties
-                )
-            })
+            rabbitConnection.doWithNewChannel(
+                Consumer { channel ->
+                    rabbitContext = RabbitContext(
+                        channel,
+                        { onCommandReceived(it) },
+                        { onResultReceived(it) },
+                        factory.properties
+                    )
+                }
+            )
         }
     }
 
@@ -57,10 +59,12 @@ class RabbitCommandsService(
         }
     }
 
-    private fun onCommandReceived(command: Command) : CommandResult? {
+    private fun onCommandReceived(command: Command): CommandResult? {
         if (command.targetApp != properties.appName && command.targetApp != "all") {
-            throw RuntimeException("Incorrect target app name '${command.targetApp}'. " +
-                                   "Expected: '${properties.appName}' OR 'all'")
+            throw RuntimeException(
+                "Incorrect target app name '${command.targetApp}'. " +
+                    "Expected: '${properties.appName}' OR 'all'"
+            )
         }
         if (command.targetApp == "all" && !properties.listenBroadcast) {
             return null

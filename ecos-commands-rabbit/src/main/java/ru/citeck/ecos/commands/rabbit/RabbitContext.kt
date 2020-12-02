@@ -46,17 +46,20 @@ class RabbitContext(
         declareQueue(instanceComQueue, allComQueueKey, durable = false)
 
         comConsumerTag = addConsumer(appComQueue, Command::class.java) {
-            msg, _ -> handleCommandMqMessage(msg)
+            msg, _ ->
+            handleCommandMqMessage(msg)
         }
         instanceComConsumerTag = addConsumer(instanceComQueue, Command::class.java) {
-            msg, _ -> handleCommandMqMessage(msg)
+            msg, _ ->
+            handleCommandMqMessage(msg)
         }
         resConsumerTag = addConsumer(appResQueue, CommandResult::class.java) {
-            msg, _ -> onResult(msg)
+            msg, _ ->
+            onResult(msg)
         }
     }
 
-    private fun <T : Any> addConsumer(queue: String, type: Class<T>, action: (T, Map<String, Any>) -> Unit) : String {
+    private fun <T : Any> addConsumer(queue: String, type: Class<T>, action: (T, Map<String, Any>) -> Unit): String {
         return channel.addConsumer(queue, type) { msg, headers ->
             try {
                 action.invoke(msg, headers)
@@ -103,7 +106,7 @@ class RabbitContext(
         channel.queueBind(queue, COM_EXCHANGE, routingKey)
     }
 
-    private fun getResQueueId(appName: String, appId: String) : String {
+    private fun getResQueueId(appName: String, appId: String): String {
         return RES_QUEUE.format(appName, appId)
     }
 }

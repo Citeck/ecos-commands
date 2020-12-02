@@ -66,7 +66,7 @@ class AllCommandsExecutorTest {
 
     inner class AddElementExecutor : CommandExecutor<Command> {
 
-        override fun execute(command: Command) : Any {
+        override fun execute(command: Command): Any {
             elements.add(command)
             return command
         }

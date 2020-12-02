@@ -10,7 +10,7 @@
     <parent>
         <artifactId>ecos-commands-project</artifactId>
         <groupId>ru.citeck.ecos</groupId>
-        <version>1.8.1</version>
+        <version>1.8.2</version>
     </parent>
 
     <properties>
@@ -58,5 +58,23 @@
         </dependency>
 
     </dependencies>
+
+    <build>
+
+        <plugins>
+
+            <plugin>
+                <groupId>com.github.gantsign.maven</groupId>
+                <artifactId>ktlint-maven-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-maven-plugin</artifactId>
+            </plugin>
+
+        </plugins>
+
+    </build>
 
 </project>
