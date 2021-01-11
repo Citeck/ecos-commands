@@ -5,6 +5,7 @@ import mu.KotlinLogging
 import ru.citeck.ecos.commands.CommandsProperties
 import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandResult
+import ru.citeck.ecos.commands.utils.CommandUtils
 import ru.citeck.ecos.commands.utils.CommandErrorUtils
 import ru.citeck.ecos.commons.json.Json
 import ru.citeck.ecos.rabbitmq.RabbitMqChannel
@@ -32,7 +33,9 @@ class RabbitContext(
     private val appErrQueue = ERR_QUEUE.format(properties.appName)
     private val appResQueue = getResQueueId(properties.appName, properties.appInstanceId)
 
-    private val instanceComQueue = COM_QUEUE.format(properties.appInstanceId)
+    private val instanceComQueue = COM_QUEUE.format(
+        CommandUtils.getTargetAppByAppInstanceId(properties.appInstanceId)
+    )
     private val allComQueueKey = COM_QUEUE.format("all")
 
     private val comConsumerTag: String
@@ -40,10 +43,12 @@ class RabbitContext(
     private val resConsumerTag: String
 
     init {
+
         declareQueue(appComQueue, appComQueue)
         declareQueue(appErrQueue, appErrQueue)
         declareQueue(appResQueue, appResQueue, durable = false)
         declareQueue(instanceComQueue, allComQueueKey, durable = false)
+        declareQueue(instanceComQueue, instanceComQueue, durable = false)
 
         comConsumerTag = addConsumer(appComQueue, Command::class.java) {
             msg, _ ->
