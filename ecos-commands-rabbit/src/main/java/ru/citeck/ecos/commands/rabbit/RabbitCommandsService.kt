@@ -6,6 +6,7 @@ import ru.citeck.ecos.commands.CommandsServiceFactory
 import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
+import ru.citeck.ecos.commands.utils.CommandUtils
 import ru.citeck.ecos.commands.utils.WeakValuesMap
 import ru.citeck.ecos.rabbitmq.RabbitMqConn
 import java.lang.IllegalArgumentException
@@ -34,19 +35,23 @@ class RabbitCommandsService(
 
     private val timer = Timer("RabbitCommandsTimer", false)
 
+    private val validTargetApps = setOf(
+        properties.appName,
+        CommandUtils.getTargetAppByAppInstanceId(properties.appInstanceId),
+        "all"
+    )
+
     init {
         repeat(factory.properties.concurrentCommandConsumers) {
 
-            rabbitConnection.doWithNewChannel(
-                Consumer { channel ->
-                    rabbitContext = RabbitContext(
-                        channel,
-                        { onCommandReceived(it) },
-                        { onResultReceived(it) },
-                        factory.properties
-                    )
-                }
-            )
+            rabbitConnection.doWithNewChannel(Consumer { channel ->
+                rabbitContext = RabbitContext(
+                    channel,
+                    { onCommandReceived(it) },
+                    { onResultReceived(it) },
+                    factory.properties
+                )
+            })
         }
     }
 
@@ -59,12 +64,11 @@ class RabbitCommandsService(
         }
     }
 
-    private fun onCommandReceived(command: Command): CommandResult? {
-        if (command.targetApp != properties.appName && command.targetApp != "all") {
-            throw RuntimeException(
-                "Incorrect target app name '${command.targetApp}'. " +
-                    "Expected: '${properties.appName}' OR 'all'"
-            )
+    private fun onCommandReceived(command: Command) : CommandResult? {
+
+        if (!validTargetApps.contains(command.targetApp)) {
+            throw RuntimeException("Incorrect target app name '${command.targetApp}'. " +
+                "Expected one of $validTargetApps")
         }
         if (command.targetApp == "all" && !properties.listenBroadcast) {
             return null

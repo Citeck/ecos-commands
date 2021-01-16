@@ -7,6 +7,7 @@ import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.dto.CommandError
 import ru.citeck.ecos.commands.exceptions.ExecutorNotFound
 import ru.citeck.ecos.commands.utils.CommandErrorUtils
+import ru.citeck.ecos.commands.utils.CommandUtils
 import ru.citeck.ecos.commons.json.Json
 import java.time.Duration
 import java.time.Instant
@@ -251,6 +252,36 @@ class CommandsService(factory: CommandsServiceFactory) {
         var targetApp: String = props.appName
         var type: String? = null
         var body: Any? = null
+
+        fun withTenant(tenant: String): CommandBuilder {
+            this.tenant = tenant
+            return this
+        }
+
+        fun withTargetAppInstanceId(instanceId: String): CommandBuilder {
+            this.targetApp = CommandUtils.getTargetAppByAppInstanceId(instanceId)
+            return this
+        }
+
+        fun withTtl(ttl: Duration): CommandBuilder {
+            this.ttl = ttl
+            return this
+        }
+
+        fun withTargetApp(targetApp: String): CommandBuilder {
+            this.targetApp = targetApp
+            return this
+        }
+
+        fun withType(type: String): CommandBuilder {
+            this.type = type
+            return this
+        }
+
+        fun withBody(body: Any?): CommandBuilder {
+            this.body = body
+            return this
+        }
 
         fun set(comm: Command) : CommandBuilder {
 
