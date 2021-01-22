@@ -70,7 +70,9 @@ class RabbitCommandsService(
             throw RuntimeException("Incorrect target app name '${command.targetApp}'. " +
                 "Expected one of $validTargetApps")
         }
-        if (command.targetApp == "all" && !properties.listenBroadcast) {
+        if (command.targetApp == "all"
+                && (!properties.listenBroadcast || !commandsService.containsExecutor(command.type))) {
+
             return null
         }
         return commandsService.executeLocal(command)
