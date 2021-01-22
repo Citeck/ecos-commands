@@ -129,6 +129,10 @@ class CommandsService(factory: CommandsServiceFactory) {
         return executeForGroup(command)
     }
 
+    fun containsExecutor(type: String): Boolean {
+        return executors.containsKey(type) || executors.containsKey("*")
+    }
+
     fun executeLocal(command: Command) : CommandResult {
 
         val started = Instant.now()
