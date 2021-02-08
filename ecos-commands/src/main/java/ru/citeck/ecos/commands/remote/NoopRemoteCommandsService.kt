@@ -42,4 +42,7 @@ class NoopRemoteCommandsService(factory: CommandsServiceFactory) : RemoteCommand
     override fun executeForGroup(command: Command): Future<List<CommandResult>> {
         return CompletableFuture.completedFuture(listOf(execute(command).get(1, TimeUnit.MINUTES)))
     }
+
+    override fun dispose() {
+    }
 }

@@ -12,6 +12,7 @@ import ru.citeck.ecos.rabbitmq.RabbitMqConn
 import java.lang.IllegalArgumentException
 import java.util.*
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
@@ -26,7 +27,9 @@ class RabbitCommandsService(
         val log = KotlinLogging.logger {}
     }
 
-    private lateinit var rabbitContext: RabbitContext
+    private lateinit var contextToSendCommands: RabbitContext
+    private val allContexts = CopyOnWriteArrayList<RabbitContext>()
+
     private val commandsService: CommandsService = factory.commandsService
     private val properties = factory.properties
 
@@ -42,17 +45,26 @@ class RabbitCommandsService(
     )
 
     init {
-        repeat(factory.properties.concurrentCommandConsumers) {
-
-            rabbitConnection.doWithNewChannel(Consumer { channel ->
-                rabbitContext = RabbitContext(
-                    channel,
-                    { onCommandReceived(it) },
-                    { onResultReceived(it) },
-                    factory.properties
-                )
-            })
+        addNewContext {
+            contextToSendCommands = it
         }
+        repeat(factory.properties.concurrentCommandConsumers - 1) {
+            addNewContext {}
+        }
+    }
+
+    private fun addNewContext(action: (RabbitContext) -> Unit) {
+
+        rabbitConnection.doWithNewChannel(Consumer { channel ->
+            val context = RabbitContext(
+                channel,
+                { onCommandReceived(it) },
+                { onResultReceived(it) },
+                factory.properties
+            )
+            allContexts.add(context)
+            action.invoke(context)
+        })
     }
 
     private fun onResultReceived(result: CommandResult) {
@@ -89,7 +101,7 @@ class RabbitCommandsService(
             log.warn { "CommandsForGroup size is too bit. Potentially memory leak. Size: " + commandsForGroup.size() }
         }
         try {
-            rabbitContext.sendCommand(command)
+            contextToSendCommands.sendCommand(command)
         } catch (e: Exception) {
             commandsForGroup.remove(command.id)
             throw e
@@ -107,11 +119,16 @@ class RabbitCommandsService(
             log.warn { "Commands size is too big. Potentially memory leak. Size: " + commands.size() }
         }
         try {
-            rabbitContext.sendCommand(command)
+            contextToSendCommands.sendCommand(command)
         } catch (e: Exception) {
             commands.remove(command.id)
             throw e
         }
         return future
+    }
+
+    override fun dispose() {
+        allContexts.forEach { it.close() }
+        allContexts.clear()
     }
 }

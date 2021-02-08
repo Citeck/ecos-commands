@@ -114,4 +114,8 @@ class RabbitContext(
     private fun getResQueueId(appName: String, appId: String): String {
         return RES_QUEUE.format(appName, appId)
     }
+
+    fun close() {
+        channel.close()
+    }
 }
