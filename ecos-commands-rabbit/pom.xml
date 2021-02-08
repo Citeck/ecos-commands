@@ -20,7 +20,7 @@
 
         <kotlin.version>1.3.61</kotlin.version>
 
-        <ecos.rabbitmq.version>1.1.0</ecos.rabbitmq.version>
+        <ecos.rabbitmq.version>2.0.0</ecos.rabbitmq.version>
 
     </properties>
 
