@@ -7,7 +7,7 @@
 
     <groupId>ru.citeck.ecos</groupId>
     <artifactId>ecos-commands-project</artifactId>
-    <version>2.1.1</version>
+    <version>2.2.0</version>
     <packaging>pom</packaging>
 
     <properties>
@@ -24,7 +24,7 @@
         <commons-beanutils.version>1.9.3</commons-beanutils.version>
         <commons-io.version>2.6</commons-io.version>
 
-        <ecos.commons.version>2.0.0</ecos.commons.version>
+        <ecos.commons.version>2.2.5</ecos.commons.version>
         <ecos.jackson.version>2.10.4.3</ecos.jackson.version>
 
     </properties>
