@@ -51,9 +51,9 @@ class RabbitCommandsService(
             var commandItem = initCommandsQueue.poll()
             while (commandItem != null) {
                 try {
-                    executeImpl(rabbitCtx, commandItem.command).thenAccept {
-                        commandItem.resultFuture.complete(it)
-                    }
+                    executeImpl(rabbitCtx, commandItem.command).thenApply { res ->
+                        commandItem.resultFuture.complete(res)
+                    }.get(commandItem.command.ttl?.toMillis() ?: 60_000, TimeUnit.MILLISECONDS)
                 } catch (e: Exception) {
                     log.error(e) { "Init command can't be executed: ${commandItem.command}" }
                 }
