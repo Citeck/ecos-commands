@@ -11,10 +11,7 @@ import ru.citeck.ecos.commands.utils.WeakValuesMap
 import ru.citeck.ecos.rabbitmq.RabbitMqConn
 import java.lang.IllegalArgumentException
 import java.util.*
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.Future
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.*
 import java.util.function.Consumer
 import kotlin.concurrent.schedule
 
@@ -27,7 +24,9 @@ class RabbitCommandsService(
         val log = KotlinLogging.logger {}
     }
 
-    private lateinit var contextToSendCommands: RabbitContext
+    private var contextToSendCommands: RabbitContext? = null
+    private var initCommandsQueue = ConcurrentLinkedQueue<InitCommandItem>()
+
     private val allContexts = CopyOnWriteArrayList<RabbitContext>()
 
     private val commandsService: CommandsService = factory.commandsService
@@ -45,8 +44,21 @@ class RabbitCommandsService(
     )
 
     init {
-        addNewContext {
-            contextToSendCommands = it
+        addNewContext { rabbitCtx ->
+
+            contextToSendCommands = rabbitCtx
+
+            var commandItem = initCommandsQueue.poll()
+            while (commandItem != null) {
+                try {
+                    executeImpl(rabbitCtx, commandItem.command).thenAccept {
+                        commandItem.resultFuture.complete(it)
+                    }
+                } catch (e: Exception) {
+                    log.error(e) { "Init command can't be executed: ${commandItem.command}" }
+                }
+                commandItem = initCommandsQueue.poll()
+            }
         }
         repeat(factory.properties.concurrentCommandConsumers - 1) {
             addNewContext {}
@@ -91,6 +103,9 @@ class RabbitCommandsService(
     }
 
     override fun executeForGroup(command: Command): Future<List<CommandResult>> {
+
+        val ctxToSendCommands = contextToSendCommands ?: return CompletableFuture.completedFuture(emptyList())
+
         val ttlMs = command.ttl?.toMillis() ?: 0
         if (ttlMs <= 0 && ttlMs > TimeUnit.MINUTES.toMillis(10)) {
             throw IllegalArgumentException("Illegal ttl for group command: $ttlMs")
@@ -101,7 +116,7 @@ class RabbitCommandsService(
             log.warn { "CommandsForGroup size is too bit. Potentially memory leak. Size: " + commandsForGroup.size() }
         }
         try {
-            contextToSendCommands.sendCommand(command)
+            ctxToSendCommands.sendCommand(command)
         } catch (e: Exception) {
             commandsForGroup.remove(command.id)
             throw e
@@ -113,13 +128,24 @@ class RabbitCommandsService(
     }
 
     override fun execute(command: Command): Future<CommandResult> {
+        val ctxToSendCommands = contextToSendCommands
+        return if (ctxToSendCommands == null) {
+            val resultFuture = CompletableFuture<CommandResult>()
+            initCommandsQueue.add(InitCommandItem(command, resultFuture))
+            resultFuture
+        } else {
+            executeImpl(ctxToSendCommands, command)
+        }
+    }
+
+    private fun executeImpl(ctxToSendCommands: RabbitContext, command: Command): CompletableFuture<CommandResult> {
         val future = CompletableFuture<CommandResult>()
         commands.put(command.id, future)
         if (commands.size() > 10_000) {
             log.warn { "Commands size is too big. Potentially memory leak. Size: " + commands.size() }
         }
         try {
-            contextToSendCommands.sendCommand(command)
+            ctxToSendCommands.sendCommand(command)
         } catch (e: Exception) {
             commands.remove(command.id)
             throw e
@@ -131,4 +157,9 @@ class RabbitCommandsService(
         allContexts.forEach { it.close() }
         allContexts.clear()
     }
+
+    private class InitCommandItem(
+        val command: Command,
+        val resultFuture: CompletableFuture<CommandResult>
+    )
 }
