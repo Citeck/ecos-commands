@@ -1,25 +1,26 @@
 package ru.citeck.ecos.commands.rabbit.test
 
 import com.github.fridujo.rabbitmq.mock.MockConnectionFactory
-import com.rabbitmq.client.ConnectionFactory
 import org.junit.jupiter.api.Test
 import ru.citeck.ecos.commands.CommandExecutor
 import ru.citeck.ecos.commands.CommandsProperties
 import ru.citeck.ecos.commands.CommandsServiceFactory
 import ru.citeck.ecos.commands.annotation.CommandType
+import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
 import ru.citeck.ecos.rabbitmq.RabbitMqConn
 import java.util.*
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
-import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class CommandBeforeRabbitInitTest {
 
     @Test
     fun test() {
 
-        val factory: ConnectionFactory = MockConnectionFactory()
+        val factory = MockConnectionFactory()
         factory.host = "localhost"
         factory.username = "admin"
         factory.password = "admin"
@@ -54,16 +55,36 @@ class CommandBeforeRabbitInitTest {
 
         services1.commandsService.addExecutor(object : CommandExecutor<TestCommand> {
             override fun execute(command: TestCommand): Any? {
+                Thread.sleep(500)
                 return answer
             }
         })
 
-        val result = services0.commandsService.execute {
-            targetApp = "test1"
-            body = TestCommand()
-        }.get(2_000, TimeUnit.MILLISECONDS)
+        val resultFuture = arrayOf(
+            services0.commandsService.execute {
+                targetApp = "test1"
+                body = TestCommand()
+            },
+            services0.commandsService.execute {
+                targetApp = "test1"
+                body = TestCommand()
+            },
+            services0.commandsService.execute {
+                targetApp = "test1"
+                body = TestCommand()
+            }
+        )
 
-        assertEquals(answer, result.getResultAs(String::class.java))
+        CompletableFuture.allOf(*resultFuture.map {
+            it as CompletableFuture<CommandResult>
+        }.toTypedArray()).get(3, TimeUnit.SECONDS)
+
+        assertTrue(resultFuture.all { it.isDone })
+        assertTrue(resultFuture.all {
+            (it as CompletableFuture<CommandResult>)
+                .getNow(null)
+                .getResultAs(String::class.java) == answer
+        })
     }
 
     @CommandType("test-command")

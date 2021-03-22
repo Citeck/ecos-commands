@@ -47,17 +47,24 @@ class RabbitCommandsService(
         addNewContext { rabbitCtx ->
 
             contextToSendCommands = rabbitCtx
+            val futures = mutableListOf<CompletableFuture<Boolean>>()
 
             var commandItem = initCommandsQueue.poll()
             while (commandItem != null) {
                 try {
-                    executeImpl(rabbitCtx, commandItem.command).thenApply { res ->
-                        commandItem.resultFuture.complete(res)
-                    }.get(commandItem.command.ttl?.toMillis() ?: 60_000, TimeUnit.MILLISECONDS)
+                    val localItem = commandItem
+                    futures.add(executeImpl(rabbitCtx, commandItem.command).thenApplyAsync { res ->
+                        localItem.resultFuture.complete(res)
+                    })
                 } catch (e: Exception) {
                     log.error(e) { "Init command can't be executed: ${commandItem.command}" }
                 }
                 commandItem = initCommandsQueue.poll()
+            }
+            try {
+                CompletableFuture.allOf(*futures.toTypedArray()).get(1, TimeUnit.MINUTES)
+            } catch (e: Exception) {
+                log.error(e) { "Error while init commands result waiting" }
             }
         }
         repeat(factory.properties.concurrentCommandConsumers - 1) {
