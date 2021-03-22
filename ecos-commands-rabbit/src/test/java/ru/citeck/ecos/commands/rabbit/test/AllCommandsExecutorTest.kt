@@ -31,11 +31,10 @@ class AllCommandsExecutorTest {
         factory.host = "localhost"
         factory.username = "admin"
         factory.password = "admin"
-        val RabbitMqConn = RabbitMqConn(factory)
-        RabbitMqConn.waitUntilReady(5000)
+        val rabbitMqConn = RabbitMqConn(factory)
 
-        val app0 = App0(RabbitMqConn)
-        val app1 = App1(RabbitMqConn)
+        val app0 = App0(rabbitMqConn)
+        val app1 = App1(rabbitMqConn)
 
         app0.commandsService.addExecutor(AddElementExecutor())
 

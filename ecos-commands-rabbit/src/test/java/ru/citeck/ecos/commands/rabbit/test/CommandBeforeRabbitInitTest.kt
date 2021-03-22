@@ -1,0 +1,71 @@
+package ru.citeck.ecos.commands.rabbit.test
+
+import com.github.fridujo.rabbitmq.mock.MockConnectionFactory
+import com.rabbitmq.client.ConnectionFactory
+import org.junit.jupiter.api.Test
+import ru.citeck.ecos.commands.CommandExecutor
+import ru.citeck.ecos.commands.CommandsProperties
+import ru.citeck.ecos.commands.CommandsServiceFactory
+import ru.citeck.ecos.commands.annotation.CommandType
+import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
+import ru.citeck.ecos.commands.remote.RemoteCommandsService
+import ru.citeck.ecos.rabbitmq.RabbitMqConn
+import java.util.*
+import java.util.concurrent.TimeUnit
+import kotlin.test.assertEquals
+
+class CommandBeforeRabbitInitTest {
+
+    @Test
+    fun test() {
+
+        val factory: ConnectionFactory = MockConnectionFactory()
+        factory.host = "localhost"
+        factory.username = "admin"
+        factory.password = "admin"
+        val rabbitMqConn = RabbitMqConn(factory, initSleepMs = 1000)
+
+        val services0 = object : CommandsServiceFactory() {
+            override fun createProperties(): CommandsProperties {
+                val props = super.createProperties()
+                props.appName = "test0"
+                props.appInstanceId = "test0-" + UUID.randomUUID()
+                return props
+            }
+            override fun createRemoteCommandsService(): RemoteCommandsService {
+                return RabbitCommandsService(this, rabbitMqConn)
+            }
+        }
+
+        val services1 = object : CommandsServiceFactory() {
+            override fun createProperties(): CommandsProperties {
+                val props = super.createProperties()
+                props.appName = "test1"
+                props.appInstanceId = "test1-" + UUID.randomUUID()
+                return props
+            }
+            override fun createRemoteCommandsService(): RemoteCommandsService {
+                return RabbitCommandsService(this, rabbitMqConn)
+            }
+        }
+        services1.remoteCommandsService
+
+        val answer = "TEST ANSWER"
+
+        services1.commandsService.addExecutor(object : CommandExecutor<TestCommand> {
+            override fun execute(command: TestCommand): Any? {
+                return answer
+            }
+        })
+
+        val result = services0.commandsService.execute {
+            targetApp = "test1"
+            body = TestCommand()
+        }.get(2_000, TimeUnit.MILLISECONDS)
+
+        assertEquals(answer, result.getResultAs(String::class.java))
+    }
+
+    @CommandType("test-command")
+    class TestCommand
+}
