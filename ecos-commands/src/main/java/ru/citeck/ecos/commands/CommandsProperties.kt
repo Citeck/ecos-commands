@@ -9,5 +9,9 @@ class CommandsProperties {
 
     var concurrentCommandConsumers = 4
 
+    var threadPoolSize = 16
+
+    var chanelQos = null
+
     var listenBroadcast = true
 }
