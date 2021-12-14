@@ -8,6 +8,7 @@ import ru.citeck.ecos.commands.dto.CommandError
 import ru.citeck.ecos.commands.exceptions.ExecutorNotFound
 import ru.citeck.ecos.commands.utils.CommandErrorUtils
 import ru.citeck.ecos.commands.utils.CommandUtils
+import ru.citeck.ecos.commands.utils.FutureWithTimeout
 import ru.citeck.ecos.commons.json.Json
 import java.time.Duration
 import java.time.Instant
@@ -190,7 +191,7 @@ class CommandsService(factory: CommandsServiceFactory) {
 
     fun executeForGroup(command: Command) : Future<List<CommandResult>> {
         val future = remote.executeForGroup(command)
-        return CompletableFuture.supplyAsync { future.get(props.commandTimeoutMs, TimeUnit.MILLISECONDS) }
+        return FutureWithTimeout(future, props.commandTimeoutMs)
     }
 
     fun execute(command: Command) : Future<CommandResult> {
@@ -201,8 +202,7 @@ class CommandsService(factory: CommandsServiceFactory) {
 
         } else {
 
-            val future = remote.execute(command)
-            CompletableFuture.supplyAsync { future.get(props.commandTimeoutMs, TimeUnit.MILLISECONDS) }
+            FutureWithTimeout(remote.execute(command), props.commandTimeoutMs)
         }
     }
 
