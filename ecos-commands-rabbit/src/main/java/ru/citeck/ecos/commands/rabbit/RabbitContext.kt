@@ -50,7 +50,7 @@ class RabbitContext(
         declareQueue(instanceComQueue, allComQueueKey, durable = false)
         declareQueue(instanceComQueue, instanceComQueue, durable = false)
 
-        comConsumerTag = addConsumer(appComQueue, false, Command::class.java) {
+        comConsumerTag = addAckConsumer(appComQueue, Command::class.java) {
             msg,
             _ ->
             handleCommandMqMessage(msg)
@@ -66,7 +66,7 @@ class RabbitContext(
     }
 
     private fun <T : Any> addConsumer(queue: String, type: Class<T>, action: (T, Map<String, Any>) -> Unit): String {
-        return channel.addConsumer(queue, null, type) { msg, headers ->
+        return channel.addConsumer(queue, type) { msg, headers ->
             try {
                 action.invoke(msg, headers)
             } catch (e: Exception) {
@@ -75,10 +75,10 @@ class RabbitContext(
         }
     }
 
-    private fun <T : Any> addConsumer(queue: String, autoAck: Boolean, type: Class<T>, action: (T, Map<String, Any>) -> Unit): String {
-        return channel.addConsumer(queue, autoAck, type) { msg, headers ->
+    private fun <T : Any> addAckConsumer(queue: String, type: Class<T>, action: (T, Map<String, Any>) -> Unit): String {
+        return channel.addAckedConsumer(queue, type) { msg, headers ->
             try {
-                action.invoke(msg, headers)
+                action.invoke(msg.getContent(), headers)
             } catch (e: Exception) {
                 toErrorQueue(msg, headers, e)
             }
