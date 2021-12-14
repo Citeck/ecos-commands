@@ -55,7 +55,7 @@ class RabbitContext(
             _ ->
             handleCommandMqMessage(msg)
         }
-        instanceComConsumerTag = addConsumer(instanceComQueue, false, Command::class.java) {
+        instanceComConsumerTag = addConsumer(instanceComQueue, Command::class.java) {
             msg, _ ->
             handleCommandMqMessage(msg)
         }
