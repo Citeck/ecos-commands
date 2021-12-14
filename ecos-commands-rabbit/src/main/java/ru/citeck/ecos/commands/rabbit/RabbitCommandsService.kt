@@ -32,8 +32,8 @@ class RabbitCommandsService(
     private val commandsService: CommandsService = factory.commandsService
     private val properties = factory.properties
 
-    private val commands = WeakValuesMap<String, CommandResultFuture>()
-    private val commandsForGroup = WeakValuesMap<String, GroupCommandResultFuture>()
+    private val commands = WeakValuesMap<String, CompletableFuture<CommandResult>>()
+    private val commandsForGroup = WeakValuesMap<String, GroupResultFuture>()
 
     private val timer = Timer("RabbitCommandsTimer", false)
 
@@ -73,7 +73,7 @@ class RabbitCommandsService(
     }
 
     private fun addNewContext(action: (RabbitContext) -> Unit) {
-        rabbitConnection.doWithNewChannel(Consumer { channel ->
+        rabbitConnection.doWithNewChannel(properties.channelQos, Consumer { channel ->
             val context = RabbitContext(
                 channel,
                 { onCommandReceived(it) },
@@ -82,7 +82,7 @@ class RabbitCommandsService(
             )
             allContexts.add(context)
             action.invoke(context)
-        }, properties?.channelQos)
+        })
     }
 
     private fun onResultReceived(result: CommandResult) {
@@ -116,7 +116,7 @@ class RabbitCommandsService(
         if (ttlMs <= 0 && ttlMs > TimeUnit.MINUTES.toMillis(10)) {
             throw IllegalArgumentException("Illegal ttl for group command: $ttlMs")
         }
-        val future = GroupCommandResultFuture(ttlMs)
+        val future = GroupResultFuture()
         commandsForGroup.put(command.id, future)
         if (commandsForGroup.size() > 10_000) {
             log.warn { "CommandsForGroup size is too bit. Potentially memory leak. Size: " + commandsForGroup.size() }
@@ -136,8 +136,7 @@ class RabbitCommandsService(
     override fun execute(command: Command): Future<CommandResult> {
         val ctxToSendCommands = contextToSendCommands
         return if (ctxToSendCommands == null) {
-            val ttlMs = command.ttl?.toMillis()
-            val resultFuture = CommandResultFuture(ttlMs)
+            val resultFuture = CompletableFuture<CommandResult>()
             initCommandsQueue.add(InitCommandItem(command, resultFuture))
             resultFuture
         } else {
@@ -146,8 +145,7 @@ class RabbitCommandsService(
     }
 
     private fun executeImpl(ctxToSendCommands: RabbitContext, command: Command): CompletableFuture<CommandResult> {
-        val ttlMs = command.ttl?.toMillis()
-        val future = CommandResultFuture(ttlMs)
+        val future = CompletableFuture<CommandResult>()
         commands.put(command.id, future)
         if (commands.size() > 10_000) {
             log.warn { "Commands size is too big. Potentially memory leak. Size: " + commands.size() }
