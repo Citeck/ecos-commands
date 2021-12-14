@@ -18,7 +18,7 @@
         <amqp-client.version>5.4.3</amqp-client.version>
         <rabbitmq-mock.version>1.0.11</rabbitmq-mock.version>
 
-        <ecos.rabbitmq.version>2.2.0</ecos.rabbitmq.version>
+        <ecos.rabbitmq.version>2.3.0-SNAPSHOT</ecos.rabbitmq.version>
 
     </properties>
 

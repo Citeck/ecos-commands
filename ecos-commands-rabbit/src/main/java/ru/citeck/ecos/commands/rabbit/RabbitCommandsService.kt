@@ -73,8 +73,7 @@ class RabbitCommandsService(
     }
 
     private fun addNewContext(action: (RabbitContext) -> Unit) {
-
-        rabbitConnection.doWithNewChannel(Consumer { channel ->
+        rabbitConnection.doWithNewChannel(properties.channelQos, Consumer { channel ->
             val context = RabbitContext(
                 channel,
                 { onCommandReceived(it) },
