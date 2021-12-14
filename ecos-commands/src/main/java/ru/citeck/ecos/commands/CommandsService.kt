@@ -189,20 +189,14 @@ class CommandsService(factory: CommandsServiceFactory) {
     }
 
     fun executeForGroup(command: Command) : Future<List<CommandResult>> {
-        val future = remote.executeForGroup(command)
-        return CompletableFuture.supplyAsync { future.get(props.commandTimeoutMs, TimeUnit.MILLISECONDS) }
+        return remote.executeForGroup(command)
     }
 
     fun execute(command: Command) : Future<CommandResult> {
-
         return if (command.targetApp == props.appName) {
-
             CompletableFuture.completedFuture(executeLocal(command))
-
         } else {
-
-            val future = remote.execute(command)
-            CompletableFuture.supplyAsync { future.get(props.commandTimeoutMs, TimeUnit.MILLISECONDS) }
+            remote.execute(command)
         }
     }
 

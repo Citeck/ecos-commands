@@ -32,8 +32,8 @@ class RabbitCommandsService(
     private val commandsService: CommandsService = factory.commandsService
     private val properties = factory.properties
 
-    private val commands = WeakValuesMap<String, CompletableFuture<CommandResult>>()
-    private val commandsForGroup = WeakValuesMap<String, GroupResultFuture>()
+    private val commands = WeakValuesMap<String, CommandResultFuture>()
+    private val commandsForGroup = WeakValuesMap<String, GroupCommandResultFuture>()
 
     private val timer = Timer("RabbitCommandsTimer", false)
 
@@ -116,7 +116,7 @@ class RabbitCommandsService(
         if (ttlMs <= 0 && ttlMs > TimeUnit.MINUTES.toMillis(10)) {
             throw IllegalArgumentException("Illegal ttl for group command: $ttlMs")
         }
-        val future = GroupResultFuture()
+        val future = GroupCommandResultFuture(ttlMs)
         commandsForGroup.put(command.id, future)
         if (commandsForGroup.size() > 10_000) {
             log.warn { "CommandsForGroup size is too bit. Potentially memory leak. Size: " + commandsForGroup.size() }
@@ -136,7 +136,8 @@ class RabbitCommandsService(
     override fun execute(command: Command): Future<CommandResult> {
         val ctxToSendCommands = contextToSendCommands
         return if (ctxToSendCommands == null) {
-            val resultFuture = CompletableFuture<CommandResult>()
+            val ttlMs = command.ttl?.toMillis()
+            val resultFuture = CommandResultFuture(ttlMs)
             initCommandsQueue.add(InitCommandItem(command, resultFuture))
             resultFuture
         } else {
@@ -145,7 +146,8 @@ class RabbitCommandsService(
     }
 
     private fun executeImpl(ctxToSendCommands: RabbitContext, command: Command): CompletableFuture<CommandResult> {
-        val future = CompletableFuture<CommandResult>()
+        val ttlMs = command.ttl?.toMillis()
+        val future = CommandResultFuture(ttlMs)
         commands.put(command.id, future)
         if (commands.size() > 10_000) {
             log.warn { "Commands size is too big. Potentially memory leak. Size: " + commands.size() }
