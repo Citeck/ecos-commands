@@ -9,7 +9,7 @@ class CommandsProperties {
 
     var concurrentCommandConsumers = 4
 
-    var chanelQos = null
+    var channelQos = 1
 
     var listenBroadcast = true
 }

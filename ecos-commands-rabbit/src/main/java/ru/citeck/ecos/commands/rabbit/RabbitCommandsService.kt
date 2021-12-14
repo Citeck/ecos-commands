@@ -82,7 +82,7 @@ class RabbitCommandsService(
             )
             allContexts.add(context)
             action.invoke(context)
-        }, properties?.chanelQos)
+        }, properties?.channelQos)
     }
 
     private fun onResultReceived(result: CommandResult) {
