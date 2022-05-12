@@ -22,3 +22,4 @@ src/test/properties/local/alfresco-global-dev.properties
 .alfresco-global-dev.properties
 rebel.xml
 dependency-reduced-pom.xml
+.flattened-pom.xml

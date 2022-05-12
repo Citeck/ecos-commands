@@ -12,7 +12,6 @@ import ru.citeck.ecos.rabbitmq.RabbitMqConn
 import java.lang.IllegalArgumentException
 import java.util.*
 import java.util.concurrent.*
-import java.util.function.Consumer
 import kotlin.concurrent.schedule
 
 class RabbitCommandsService(
@@ -31,6 +30,7 @@ class RabbitCommandsService(
 
     private val commandsService: CommandsService = factory.commandsService
     private val properties = factory.properties
+    private val webappProps = factory.webappProps
 
     private val commands = WeakValuesMap<String, CompletableFuture<CommandResult>>()
     private val commandsForGroup = WeakValuesMap<String, GroupResultFuture>()
@@ -38,8 +38,8 @@ class RabbitCommandsService(
     private val timer = Timer("RabbitCommandsTimer", false)
 
     private val validTargetApps = setOf(
-        properties.appName,
-        CommandUtils.getTargetAppByAppInstanceId(properties.appInstanceId),
+        webappProps.appName,
+        CommandUtils.getTargetAppByAppInstanceId(webappProps.appInstanceId),
         "all"
     )
 
@@ -53,9 +53,11 @@ class RabbitCommandsService(
             while (commandItem != null) {
                 try {
                     val localItem = commandItem
-                    futures.add(executeImpl(rabbitCtx, commandItem.command).thenApplyAsync { res ->
-                        localItem.resultFuture.complete(res)
-                    })
+                    futures.add(
+                        executeImpl(rabbitCtx, commandItem.command).thenApplyAsync { res ->
+                            localItem.resultFuture.complete(res)
+                        }
+                    )
                 } catch (e: Exception) {
                     log.error(e) { "Init command can't be executed: ${commandItem.command}" }
                 }
@@ -73,16 +75,19 @@ class RabbitCommandsService(
     }
 
     private fun addNewContext(action: (RabbitContext) -> Unit) {
-        rabbitConnection.doWithNewChannel(properties.channelQos, Consumer { channel ->
+        rabbitConnection.doWithNewChannel(
+            properties.channelQos
+        ) { channel ->
             val context = RabbitContext(
                 channel,
                 { onCommandReceived(it) },
                 { onResultReceived(it) },
-                factory.properties
+                factory.properties,
+                factory.webappProps
             )
             allContexts.add(context)
             action.invoke(context)
-        })
+        }
     }
 
     private fun onResultReceived(result: CommandResult) {
@@ -94,14 +99,17 @@ class RabbitCommandsService(
         }
     }
 
-    private fun onCommandReceived(command: Command) : CommandResult? {
+    private fun onCommandReceived(command: Command): CommandResult? {
 
         if (!validTargetApps.contains(command.targetApp)) {
-            throw RuntimeException("Incorrect target app name '${command.targetApp}'. " +
-                "Expected one of $validTargetApps")
+            throw RuntimeException(
+                "Incorrect target app name '${command.targetApp}'. " +
+                    "Expected one of $validTargetApps"
+            )
         }
-        if (command.targetApp == "all"
-                && (!properties.listenBroadcast || !commandsService.containsExecutor(command.type))) {
+        if (command.targetApp == "all" &&
+            (!properties.listenBroadcast || !commandsService.containsExecutor(command.type))
+        ) {
 
             return null
         }

@@ -2,14 +2,16 @@ package ru.citeck.ecos.commands.rabbit.test
 
 import com.github.fridujo.rabbitmq.mock.MockConnectionFactory
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito
 import ru.citeck.ecos.commands.CommandExecutor
-import ru.citeck.ecos.commands.CommandsProperties
 import ru.citeck.ecos.commands.CommandsServiceFactory
 import ru.citeck.ecos.commands.annotation.CommandType
 import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
 import ru.citeck.ecos.rabbitmq.RabbitMqConn
+import ru.citeck.ecos.webapp.api.context.EcosWebAppContext
+import ru.citeck.ecos.webapp.api.properties.EcosWebAppProperties
 import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
@@ -27,23 +29,32 @@ class CommandBeforeRabbitInitTest {
         val rabbitMqConn = RabbitMqConn(factory, initSleepMs = 1000)
 
         val services0 = object : CommandsServiceFactory() {
-            override fun createProperties(): CommandsProperties {
-                val props = super.createProperties()
-                props.appName = "test0"
-                props.appInstanceId = "test0-" + UUID.randomUUID()
-                return props
+            override fun getEcosWebAppContext(): EcosWebAppContext? {
+                val ctx = Mockito.mock(EcosWebAppContext::class.java)
+                Mockito.`when`(ctx.getProperties()).thenReturn(
+                    EcosWebAppProperties(
+                        appName = "test0",
+                        appInstanceId = "test0-" + UUID.randomUUID()
+                    )
+                )
+                return ctx
             }
+
             override fun createRemoteCommandsService(): RemoteCommandsService {
                 return RabbitCommandsService(this, rabbitMqConn)
             }
         }
 
         val services1 = object : CommandsServiceFactory() {
-            override fun createProperties(): CommandsProperties {
-                val props = super.createProperties()
-                props.appName = "test1"
-                props.appInstanceId = "test1-" + UUID.randomUUID()
-                return props
+            override fun getEcosWebAppContext(): EcosWebAppContext? {
+                val ctx = Mockito.mock(EcosWebAppContext::class.java)
+                Mockito.`when`(ctx.getProperties()).thenReturn(
+                    EcosWebAppProperties(
+                        appName = "test1",
+                        appInstanceId = "test1-" + UUID.randomUUID()
+                    )
+                )
+                return ctx
             }
             override fun createRemoteCommandsService(): RemoteCommandsService {
                 return RabbitCommandsService(this, rabbitMqConn)
@@ -80,11 +91,13 @@ class CommandBeforeRabbitInitTest {
         CompletableFuture.allOf(*resultFuture.toTypedArray()).get(3, TimeUnit.SECONDS)
 
         assertTrue(resultFuture.all { it.isDone })
-        assertTrue(resultFuture.all {
-            (it as CompletableFuture<CommandResult>)
-                .getNow(null)
-                .getResultAs(String::class.java) == answer
-        })
+        assertTrue(
+            resultFuture.all {
+                (it as CompletableFuture<CommandResult>)
+                    .getNow(null)
+                    .getResultAs(String::class.java) == answer
+            }
+        )
     }
 
     @CommandType("test-command")

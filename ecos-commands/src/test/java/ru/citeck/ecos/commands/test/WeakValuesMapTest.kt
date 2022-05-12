@@ -1,6 +1,5 @@
 package ru.citeck.ecos.commands.test
 
-import org.junit.jupiter.api.Test
 import ru.citeck.ecos.commands.utils.WeakValuesMap
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -8,8 +7,8 @@ import kotlin.test.assertNull
 
 class WeakValuesMapTest {
 
-    //potentially not stable test
-    //@Test
+    // potentially not stable test
+    // @Test
     fun test() {
 
         val weakMap = WeakValuesMap<String, TestClass>()
@@ -31,7 +30,7 @@ class WeakValuesMapTest {
 
         val testKey3 = testKey + 3
         weakMap.put(testKey3, TestClass())
-        //one was removed in put
+        // one was removed in put
         assertEquals(2, weakMap.size())
 
         assertNull(weakMap.get(testKey))

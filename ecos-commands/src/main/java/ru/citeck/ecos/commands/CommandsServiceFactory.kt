@@ -8,6 +8,8 @@ import ru.citeck.ecos.commands.remote.NoopRemoteCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
 import ru.citeck.ecos.commands.transaction.SimpleTxnManager
 import ru.citeck.ecos.commands.transaction.TransactionManager
+import ru.citeck.ecos.webapp.api.context.EcosWebAppContext
+import ru.citeck.ecos.webapp.api.properties.EcosWebAppProperties
 
 open class CommandsServiceFactory {
 
@@ -18,27 +20,35 @@ open class CommandsServiceFactory {
     val commandCtxManager by lazy { createCommandCtxManager() }
     val commandCtxController by lazy { createCommandCtxController() }
 
-    protected open fun createCommandsService() : CommandsService {
+    val webappProps by lazy {
+        getEcosWebAppContext()?.getProperties() ?: EcosWebAppProperties("", "")
+    }
+
+    protected open fun createCommandsService(): CommandsService {
         return CommandsService(this)
     }
 
-    protected open fun createProperties() : CommandsProperties {
+    protected open fun createProperties(): CommandsProperties {
         return CommandsProperties()
     }
 
-    protected open fun createRemoteCommandsService() : RemoteCommandsService {
+    protected open fun createRemoteCommandsService(): RemoteCommandsService {
         return NoopRemoteCommandsService(this)
     }
 
-    protected open fun createTransactionManager() : TransactionManager {
+    protected open fun createTransactionManager(): TransactionManager {
         return SimpleTxnManager()
     }
 
-    protected open fun createCommandCtxManager() : CommandCtxManager {
+    protected open fun createCommandCtxManager(): CommandCtxManager {
         return SimpleCommandCtxManager(this)
     }
 
-    protected open fun createCommandCtxController() : CommandCtxController {
+    protected open fun createCommandCtxController(): CommandCtxController {
         return SimpleCommandCtxController()
+    }
+
+    open fun getEcosWebAppContext(): EcosWebAppContext? {
+        return null
     }
 }

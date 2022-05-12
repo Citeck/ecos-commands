@@ -4,5 +4,5 @@ import java.util.concurrent.Callable
 
 interface TransactionManager {
 
-    fun <T> doInTransaction(action: Callable<T>) : T
+    fun <T> doInTransaction(action: Callable<T>): T
 }

@@ -6,9 +6,9 @@ import java.util.concurrent.Future
 
 interface RemoteCommandsService {
 
-    fun execute(command: Command) : Future<CommandResult>
+    fun execute(command: Command): Future<CommandResult>
 
-    fun executeForGroup(command: Command) : Future<List<CommandResult>>
+    fun executeForGroup(command: Command): Future<List<CommandResult>>
 
     fun dispose()
 }

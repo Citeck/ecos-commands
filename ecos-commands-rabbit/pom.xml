@@ -8,9 +8,9 @@
     <artifactId>ecos-commands-rabbit</artifactId>
 
     <parent>
-        <artifactId>ecos-commands-project</artifactId>
         <groupId>ru.citeck.ecos</groupId>
-        <version>2.6.0</version>
+        <artifactId>ecos-commands-project</artifactId>
+        <version>${revision}</version>
     </parent>
 
     <properties>
@@ -18,7 +18,7 @@
         <amqp-client.version>5.4.3</amqp-client.version>
         <rabbitmq-mock.version>1.0.11</rabbitmq-mock.version>
 
-        <ecos.rabbitmq.version>2.3.0</ecos.rabbitmq.version>
+        <ecos.rabbitmq.version>2.4.0</ecos.rabbitmq.version>
 
     </properties>
 
@@ -53,6 +53,15 @@
     </dependencies>
 
     <build>
+
+        <plugins>
+
+            <plugin>
+                <groupId>com.github.gantsign.maven</groupId>
+                <artifactId>ktlint-maven-plugin</artifactId>
+            </plugin>
+
+        </plugins>
 
         <pluginManagement>
 

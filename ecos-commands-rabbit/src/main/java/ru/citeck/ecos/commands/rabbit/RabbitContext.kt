@@ -5,17 +5,19 @@ import mu.KotlinLogging
 import ru.citeck.ecos.commands.CommandsProperties
 import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandResult
-import ru.citeck.ecos.commands.utils.CommandUtils
 import ru.citeck.ecos.commands.utils.CommandErrorUtils
+import ru.citeck.ecos.commands.utils.CommandUtils
 import ru.citeck.ecos.commons.json.Json
 import ru.citeck.ecos.rabbitmq.RabbitMqChannel
+import ru.citeck.ecos.webapp.api.properties.EcosWebAppProperties
 import kotlin.collections.HashMap
 
 class RabbitContext(
     private val channel: RabbitMqChannel,
     private val onCommand: (Command) -> CommandResult?,
     private val onResult: (CommandResult) -> Unit,
-    private val properties: CommandsProperties
+    private val properties: CommandsProperties,
+    webappProps: EcosWebAppProperties
 ) {
 
     companion object {
@@ -29,12 +31,12 @@ class RabbitContext(
         private const val RES_QUEUE = "commands.%s.res.%s"
     }
 
-    private val appComQueue = COM_QUEUE.format(properties.appName)
-    private val appErrQueue = ERR_QUEUE.format(properties.appName)
-    private val appResQueue = getResQueueId(properties.appName, properties.appInstanceId)
+    private val appComQueue = COM_QUEUE.format(webappProps.appName)
+    private val appErrQueue = ERR_QUEUE.format(webappProps.appName)
+    private val appResQueue = getResQueueId(webappProps.appName, webappProps.appInstanceId)
 
     private val instanceComQueue = COM_QUEUE.format(
-        CommandUtils.getTargetAppByAppInstanceId(properties.appInstanceId)
+        CommandUtils.getTargetAppByAppInstanceId(webappProps.appInstanceId)
     )
     private val allComQueueKey = COM_QUEUE.format("all")
 
@@ -51,16 +53,16 @@ class RabbitContext(
         declareQueue(instanceComQueue, instanceComQueue, durable = false)
 
         comConsumerTag = addConsumer(appComQueue, Command::class.java) {
-            msg,
-            _ ->
+                msg,
+                _ ->
             handleCommandMqMessage(msg)
         }
         instanceComConsumerTag = addConsumer(instanceComQueue, Command::class.java) {
-            msg, _ ->
+                msg, _ ->
             handleCommandMqMessage(msg)
         }
         resConsumerTag = addConsumer(appResQueue, CommandResult::class.java) {
-            msg, _ ->
+                msg, _ ->
             onResult(msg)
         }
     }

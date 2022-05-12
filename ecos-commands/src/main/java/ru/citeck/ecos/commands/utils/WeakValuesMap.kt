@@ -36,7 +36,7 @@ class WeakValuesMap<K, V> {
     }
 
     @Synchronized
-    fun get(key: K) : V? {
+    fun get(key: K): V? {
         val weakRef = data[key] ?: return null
         val result = weakRef.get()
         return if (result == null) {
@@ -48,7 +48,7 @@ class WeakValuesMap<K, V> {
     }
 
     @Synchronized
-    fun size() : Int {
+    fun size(): Int {
         return data.size
     }
 }
