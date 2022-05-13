@@ -12,7 +12,7 @@ import ru.citeck.ecos.commons.promise.Promises
 import ru.citeck.ecos.rabbitmq.RabbitMqConn
 import ru.citeck.ecos.webapp.api.promise.Promise
 import java.lang.IllegalArgumentException
-import java.time.Duration
+import java.util.*
 import java.util.concurrent.*
 
 class RabbitCommandsService(
@@ -36,7 +36,7 @@ class RabbitCommandsService(
     private val commands = WeakValuesMap<String, CompletableFuture<CommandResult>>()
     private val commandsForGroup = WeakValuesMap<String, GroupResultFuture>()
 
-    private val scheduler = factory.getEcosWebAppContext()!!.getTasksApi().getTaskScheduler("main")
+    private val timer = Timer("RabbitCommandsTimer", false)
 
     private val validTargetApps = setOf(
         webappProps.appName,
@@ -121,20 +121,27 @@ class RabbitCommandsService(
 
         val ctxToSendCommands = contextToSendCommands ?: return Promises.resolve(emptyList())
 
+        val future = GroupResultFuture()
+
         val ttlMs = command.ttl?.toMillis() ?: 0
         if (ttlMs <= 0 && ttlMs > TimeUnit.MINUTES.toMillis(10)) {
-            throw IllegalArgumentException("Illegal ttl for group command: $ttlMs")
+            future.completeExceptionally(IllegalArgumentException("Illegal ttl for group command: $ttlMs"))
+            return Promises.create(future)
         }
-        val future = GroupResultFuture()
         commandsForGroup.put(command.id, future)
         if (commandsForGroup.size() > 10_000) {
             log.warn { "CommandsForGroup size is too bit. Potentially memory leak. Size: " + commandsForGroup.size() }
         }
         try {
             ctxToSendCommands.sendCommand(command)
-            scheduler.schedule({ "executeForGroup. command: ${command.type}" }, Duration.ofMillis(ttlMs)) {
-                future.flushResults()
-            }
+            timer.schedule(
+                object : TimerTask() {
+                    override fun run() {
+                        future.flushResults()
+                    }
+                },
+                ttlMs
+            )
         } catch (e: Throwable) {
             commandsForGroup.remove(command.id)
             future.completeExceptionally(e)

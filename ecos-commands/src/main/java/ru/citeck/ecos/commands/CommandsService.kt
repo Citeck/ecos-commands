@@ -188,7 +188,11 @@ class CommandsService(factory: CommandsServiceFactory) {
     }
 
     fun executeForGroup(command: Command): CommandFuture<List<CommandResult>> {
-        val promise = remote.executeForGroup(command)
+        val promise = try {
+            remote.executeForGroup(command)
+        } catch (e: Throwable) {
+            return CommandFutureImpl(Promises.reject(e))
+        }
         val promiseWithTimeout = Promises.withTimeout(promise, Duration.ofMillis(props.commandTimeoutMs))
         return CommandFutureImpl(promiseWithTimeout)
     }
@@ -198,10 +202,14 @@ class CommandsService(factory: CommandsServiceFactory) {
         val promise = if (command.targetApp == webappProps.appName) {
             Promises.resolve(executeLocal(command))
         } else {
-            Promises.withTimeout(
-                remote.execute(command),
-                Duration.ofMillis(props.commandTimeoutMs)
-            )
+            try {
+                Promises.withTimeout(
+                    remote.execute(command),
+                    Duration.ofMillis(props.commandTimeoutMs)
+                )
+            } catch (e: Throwable) {
+                Promises.reject(e)
+            }
         }
         return CommandFutureImpl(promise)
     }
