@@ -8,11 +8,12 @@ import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
 import ru.citeck.ecos.commands.utils.CommandUtils
 import ru.citeck.ecos.commands.utils.WeakValuesMap
+import ru.citeck.ecos.commons.promise.Promises
 import ru.citeck.ecos.rabbitmq.RabbitMqConn
+import ru.citeck.ecos.webapp.api.promise.Promise
 import java.lang.IllegalArgumentException
-import java.util.*
+import java.time.Duration
 import java.util.concurrent.*
-import kotlin.concurrent.schedule
 
 class RabbitCommandsService(
     private val factory: CommandsServiceFactory,
@@ -35,7 +36,7 @@ class RabbitCommandsService(
     private val commands = WeakValuesMap<String, CompletableFuture<CommandResult>>()
     private val commandsForGroup = WeakValuesMap<String, GroupResultFuture>()
 
-    private val timer = Timer("RabbitCommandsTimer", false)
+    private val scheduler = factory.getEcosWebAppContext()!!.getTasksApi().getTaskScheduler("main")
 
     private val validTargetApps = setOf(
         webappProps.appName,
@@ -116,9 +117,9 @@ class RabbitCommandsService(
         return commandsService.executeLocal(command)
     }
 
-    override fun executeForGroup(command: Command): Future<List<CommandResult>> {
+    override fun executeForGroup(command: Command): Promise<List<CommandResult>> {
 
-        val ctxToSendCommands = contextToSendCommands ?: return CompletableFuture.completedFuture(emptyList())
+        val ctxToSendCommands = contextToSendCommands ?: return Promises.resolve(emptyList())
 
         val ttlMs = command.ttl?.toMillis() ?: 0
         if (ttlMs <= 0 && ttlMs > TimeUnit.MINUTES.toMillis(10)) {
@@ -131,25 +132,26 @@ class RabbitCommandsService(
         }
         try {
             ctxToSendCommands.sendCommand(command)
-        } catch (e: Exception) {
+            scheduler.schedule({ "executeForGroup. command: ${command.type}" }, Duration.ofMillis(ttlMs)) {
+                future.flushResults()
+            }
+        } catch (e: Throwable) {
             commandsForGroup.remove(command.id)
-            throw e
+            future.completeExceptionally(e)
         }
-        timer.schedule(ttlMs) {
-            future.flushResults()
-        }
-        return future
+        return Promises.create(future)
     }
 
-    override fun execute(command: Command): Future<CommandResult> {
+    override fun execute(command: Command): Promise<CommandResult> {
         val ctxToSendCommands = contextToSendCommands
-        return if (ctxToSendCommands == null) {
+        val future = if (ctxToSendCommands == null) {
             val resultFuture = CompletableFuture<CommandResult>()
             initCommandsQueue.add(InitCommandItem(command, resultFuture))
             resultFuture
         } else {
             executeImpl(ctxToSendCommands, command)
         }
+        return Promises.create(future)
     }
 
     private fun executeImpl(ctxToSendCommands: RabbitContext, command: Command): CompletableFuture<CommandResult> {
@@ -160,9 +162,9 @@ class RabbitCommandsService(
         }
         try {
             ctxToSendCommands.sendCommand(command)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             commands.remove(command.id)
-            throw e
+            future.completeExceptionally(e)
         }
         return future
     }

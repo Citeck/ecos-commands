@@ -2,16 +2,15 @@ package ru.citeck.ecos.commands.rabbit.test
 
 import com.github.fridujo.rabbitmq.mock.MockConnectionFactory
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito
 import ru.citeck.ecos.commands.CommandExecutor
 import ru.citeck.ecos.commands.CommandsServiceFactory
 import ru.citeck.ecos.commands.annotation.CommandType
 import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
+import ru.citeck.ecos.commons.test.EcosWebAppContextMock
 import ru.citeck.ecos.rabbitmq.RabbitMqConn
 import ru.citeck.ecos.webapp.api.context.EcosWebAppContext
-import ru.citeck.ecos.webapp.api.properties.EcosWebAppProperties
 import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
@@ -30,14 +29,7 @@ class CommandBeforeRabbitInitTest {
 
         val services0 = object : CommandsServiceFactory() {
             override fun getEcosWebAppContext(): EcosWebAppContext? {
-                val ctx = Mockito.mock(EcosWebAppContext::class.java)
-                Mockito.`when`(ctx.getProperties()).thenReturn(
-                    EcosWebAppProperties(
-                        appName = "test0",
-                        appInstanceId = "test0-" + UUID.randomUUID()
-                    )
-                )
-                return ctx
+                return EcosWebAppContextMock("test0", "test0-" + UUID.randomUUID())
             }
 
             override fun createRemoteCommandsService(): RemoteCommandsService {
@@ -46,15 +38,8 @@ class CommandBeforeRabbitInitTest {
         }
 
         val services1 = object : CommandsServiceFactory() {
-            override fun getEcosWebAppContext(): EcosWebAppContext? {
-                val ctx = Mockito.mock(EcosWebAppContext::class.java)
-                Mockito.`when`(ctx.getProperties()).thenReturn(
-                    EcosWebAppProperties(
-                        appName = "test1",
-                        appInstanceId = "test1-" + UUID.randomUUID()
-                    )
-                )
-                return ctx
+            override fun getEcosWebAppContext(): EcosWebAppContext {
+                return EcosWebAppContextMock("test1", "test1-" + UUID.randomUUID())
             }
             override fun createRemoteCommandsService(): RemoteCommandsService {
                 return RabbitCommandsService(this, rabbitMqConn)

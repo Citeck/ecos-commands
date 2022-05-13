@@ -6,17 +6,17 @@ import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandError
 import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.exceptions.ExecutorNotFound
+import ru.citeck.ecos.commands.future.CommandFuture
+import ru.citeck.ecos.commands.future.CommandFutureImpl
 import ru.citeck.ecos.commands.utils.CommandErrorUtils
 import ru.citeck.ecos.commands.utils.CommandUtils
-import ru.citeck.ecos.commands.utils.FutureWithTimeout
 import ru.citeck.ecos.commons.json.Json
+import ru.citeck.ecos.commons.promise.Promises
 import ru.citeck.ecos.webapp.api.properties.EcosWebAppProperties
 import java.time.Duration
 import java.time.Instant
 import java.util.*
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 import kotlin.collections.ArrayList
 import kotlin.reflect.KClass
@@ -106,25 +106,25 @@ class CommandsService(factory: CommandsServiceFactory) {
         return executeForGroup(block).get(props.commandTimeoutMs, TimeUnit.MILLISECONDS)
     }
 
-    fun execute(command: Any): Future<CommandResult> {
+    fun execute(command: Any): CommandFuture<CommandResult> {
         return execute {
             body = Json.mapper.toJson(command)
             type = needCommandType(command)
         }
     }
 
-    fun executeForGroup(command: Any): Future<List<CommandResult>> {
+    fun executeForGroup(command: Any): CommandFuture<List<CommandResult>> {
         return executeForGroup {
             body = Json.mapper.toJson(command)
             type = needCommandType(command)
         }
     }
 
-    fun execute(block: CommandBuilder.() -> Unit): Future<CommandResult> {
+    fun execute(block: CommandBuilder.() -> Unit): CommandFuture<CommandResult> {
         return execute(buildCommand(block))
     }
 
-    fun executeForGroup(block: CommandBuilder.() -> Unit): Future<List<CommandResult>> {
+    fun executeForGroup(block: CommandBuilder.() -> Unit): CommandFuture<List<CommandResult>> {
         val builder = CommandBuilder(props, webappProps, ctxManager.getCurrentUser())
         builder.ttl = Duration.ofSeconds(2)
         val command = builder.apply(block).build()
@@ -187,20 +187,23 @@ class CommandsService(factory: CommandsServiceFactory) {
         )
     }
 
-    fun executeForGroup(command: Command): Future<List<CommandResult>> {
-        val future = remote.executeForGroup(command)
-        return FutureWithTimeout(future, props.commandTimeoutMs)
+    fun executeForGroup(command: Command): CommandFuture<List<CommandResult>> {
+        val promise = remote.executeForGroup(command)
+        val promiseWithTimeout = Promises.withTimeout(promise, Duration.ofMillis(props.commandTimeoutMs))
+        return CommandFutureImpl(promiseWithTimeout)
     }
 
-    fun execute(command: Command): Future<CommandResult> {
+    fun execute(command: Command): CommandFuture<CommandResult> {
 
-        return if (command.targetApp == webappProps.appName) {
-
-            CompletableFuture.completedFuture(executeLocal(command))
+        val promise = if (command.targetApp == webappProps.appName) {
+            Promises.resolve(executeLocal(command))
         } else {
-
-            FutureWithTimeout(remote.execute(command), props.commandTimeoutMs)
+            Promises.withTimeout(
+                remote.execute(command),
+                Duration.ofMillis(props.commandTimeoutMs)
+            )
         }
+        return CommandFutureImpl(promise)
     }
 
     fun <T : Any?> addExecutor(executor: CommandExecutor<T>) {

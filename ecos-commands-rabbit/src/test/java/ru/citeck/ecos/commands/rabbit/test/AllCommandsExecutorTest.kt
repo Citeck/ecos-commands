@@ -3,16 +3,15 @@ package ru.citeck.ecos.commands.rabbit.test
 import com.github.fridujo.rabbitmq.mock.MockConnectionFactory
 import com.rabbitmq.client.ConnectionFactory
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito
 import ru.citeck.ecos.commands.CommandExecutor
 import ru.citeck.ecos.commands.CommandsProperties
 import ru.citeck.ecos.commands.CommandsServiceFactory
 import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
+import ru.citeck.ecos.commons.test.EcosWebAppContextMock
 import ru.citeck.ecos.rabbitmq.RabbitMqConn
 import ru.citeck.ecos.webapp.api.context.EcosWebAppContext
-import ru.citeck.ecos.webapp.api.properties.EcosWebAppProperties
 import kotlin.test.assertEquals
 
 class AllCommandsExecutorTest {
@@ -84,15 +83,8 @@ class AllCommandsExecutorTest {
             return RabbitCommandsService(this, conntectionFactory)
         }
 
-        override fun getEcosWebAppContext(): EcosWebAppContext? {
-            val ctx = Mockito.mock(EcosWebAppContext::class.java)
-            Mockito.`when`(ctx.getProperties()).thenReturn(
-                EcosWebAppProperties(
-                    appName = APP_0_NAME,
-                    appInstanceId = APP_0_ID
-                )
-            )
-            return ctx
+        override fun getEcosWebAppContext(): EcosWebAppContext {
+            return EcosWebAppContextMock(APP_0_NAME, APP_0_ID)
         }
     }
 
@@ -108,14 +100,7 @@ class AllCommandsExecutorTest {
             return props
         }
         override fun getEcosWebAppContext(): EcosWebAppContext? {
-            val ctx = Mockito.mock(EcosWebAppContext::class.java)
-            Mockito.`when`(ctx.getProperties()).thenReturn(
-                EcosWebAppProperties(
-                    appName = APP_1_NAME,
-                    appInstanceId = APP_1_ID
-                )
-            )
-            return ctx
+            return EcosWebAppContextMock(APP_1_NAME, APP_1_ID)
         }
 
         override fun createRemoteCommandsService(): RemoteCommandsService {
