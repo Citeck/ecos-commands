@@ -20,7 +20,7 @@ def getChangeString() {
 }
 // Changes func
 properties([
-    buildDiscarder(logRotator(daysToKeepStr: '', numToKeepStr: '7')),
+    buildDiscarder(logRotator(daysToKeepStr: '', numToKeepStr: '3')),
 ])
 timestamps {
   node {
@@ -33,13 +33,13 @@ timestamps {
           doGenerateSubmoduleConfigurations: false,
           extensions: [],
           submoduleCfg: [],
-          userRemoteConfigs: [[credentialsId: 'bc074014-bab1-4fb0-b5a4-4cfa9ded5e66',url: "git@bitbucket.org:citeck/ecos-commands.git"]]
+          userRemoteConfigs: [[credentialsId: 'awx.integrations',url: "git@gitlab.citeck.ru:citeck-projects/ecos-commands.git"]]
         ])
       }
       def project_version = readMavenPom().getVersion()
       project_id = readMavenPom().getArtifactId()
       mattermostSend endpoint: 'https://mm.citeck.ru/hooks/9ytch3uox3retkfypuq7xi3yyr', channel: "build_notifications", color: 'good', message: " :arrow_forward: **Build project ${project_id}:**\n**Branch:** ${env.BRANCH_NAME}\n**Version:** ${project_version}\n**Build id:** ${env.BUILD_NUMBER}\n**Build url:** ${env.BUILD_URL}\n**Changes:**\n" + getChangeString()
-      if ((env.BRANCH_NAME != "master") && (!project_version.contains('SNAPSHOT')))  {
+      if ((env.BRANCH_NAME != "master") && (env.BRANCH_NAME != "master-1") && (!project_version.contains('SNAPSHOT')))  {
         echo "Assembly of release artifacts is allowed only from the master branch!"
         // currentBuild.result = 'SUCCESS'
         // return
