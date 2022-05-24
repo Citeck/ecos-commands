@@ -12,7 +12,7 @@
 
     <properties>
 
-        <revision>2.7.5</revision>
+        <revision>2.7.6</revision>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.target>1.8</maven.compiler.target>
@@ -25,9 +25,9 @@
         <commons-lang3.version>3.8.1</commons-lang3.version>
         <commons-beanutils.version>1.9.3</commons-beanutils.version>
         <commons-io.version>2.6</commons-io.version>
-        <ecos.webapp-api.version>1.0.5</ecos.webapp-api.version>
+        <ecos.webapp-api.version>1.0.6</ecos.webapp-api.version>
 
-        <ecos.commons.version>2.6.7</ecos.commons.version>
+        <ecos.commons.version>2.6.9</ecos.commons.version>
         <ecos.jackson.version>2.10.4.3</ecos.jackson.version>
 
     </properties>
