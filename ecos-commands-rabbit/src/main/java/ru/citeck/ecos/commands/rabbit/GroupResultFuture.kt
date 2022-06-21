@@ -8,6 +8,7 @@ class GroupResultFuture : CompletableFuture<List<CommandResult>>() {
     val results: MutableList<CommandResult> = ArrayList()
 
     fun flushResults() {
-        super.complete(results)
+        // not sure why but sometimes this list contain null values
+        super.complete(results.filterNotNull())
     }
 }
