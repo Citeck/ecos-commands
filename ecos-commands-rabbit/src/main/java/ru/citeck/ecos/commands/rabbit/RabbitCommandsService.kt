@@ -9,6 +9,7 @@ import ru.citeck.ecos.commands.remote.RemoteCommandsService
 import ru.citeck.ecos.commands.utils.CommandUtils
 import ru.citeck.ecos.commands.utils.WeakValuesMap
 import ru.citeck.ecos.commons.promise.Promises
+import ru.citeck.ecos.context.lib.auth.AuthContext
 import ru.citeck.ecos.rabbitmq.RabbitMqConn
 import ru.citeck.ecos.webapp.api.promise.Promise
 import java.lang.IllegalArgumentException
@@ -114,7 +115,9 @@ class RabbitCommandsService(
 
             return null
         }
-        return commandsService.executeLocal(command)
+        return AuthContext.runAsSystem {
+            commandsService.executeLocal(command)
+        }
     }
 
     override fun executeForGroup(command: Command): Promise<List<CommandResult>> {
