@@ -109,8 +109,10 @@ class RabbitCommandsService(
                     "Expected one of $validTargetApps"
             )
         }
+        val listenBroadcast = properties.listenBroadcast && factory.getEcosWebAppContext()?.isReady() == true
+
         if (command.targetApp == "all" &&
-            (!properties.listenBroadcast || !commandsService.containsExecutor(command.type))
+            (!listenBroadcast || !commandsService.containsExecutor(command.type))
         ) {
 
             return null

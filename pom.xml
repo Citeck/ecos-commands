@@ -12,7 +12,7 @@
 
     <properties>
 
-        <revision>2.7.9</revision>
+        <revision>2.7.10</revision>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.target>1.8</maven.compiler.target>
