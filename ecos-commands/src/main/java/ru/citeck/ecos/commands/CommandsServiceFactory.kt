@@ -29,7 +29,7 @@ open class CommandsServiceFactory {
     }
 
     protected open fun createProperties(): CommandsProperties {
-        return CommandsProperties()
+        return CommandsProperties.create {}
     }
 
     protected open fun createRemoteCommandsService(): RemoteCommandsService {

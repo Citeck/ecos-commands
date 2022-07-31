@@ -95,10 +95,9 @@ class AllCommandsExecutorTest {
         }
 
         override fun createProperties(): CommandsProperties {
-            val props = CommandsProperties()
-
-            return props
+            return CommandsProperties.create {}
         }
+
         override fun getEcosWebAppContext(): EcosWebAppContext? {
             return EcosWebAppContextMock(APP_1_NAME, APP_1_ID)
         }
