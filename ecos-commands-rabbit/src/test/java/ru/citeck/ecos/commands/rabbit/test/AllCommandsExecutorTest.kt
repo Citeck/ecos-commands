@@ -19,9 +19,7 @@ class AllCommandsExecutorTest {
     companion object {
 
         const val APP_0_NAME = "app_0_name"
-        const val APP_0_ID = "app_0_id"
         const val APP_1_NAME = "app_1_name"
-        const val APP_1_ID = "app_1_id"
     }
 
     val elements = ArrayList<Command>()
@@ -35,8 +33,8 @@ class AllCommandsExecutorTest {
         factory.password = "admin"
         val rabbitMqConn = RabbitMqConn(factory)
 
-        val app0 = App0(rabbitMqConn)
-        val app1 = App1(rabbitMqConn)
+        val app0 = TestApp(APP_0_NAME, rabbitMqConn)
+        val app1 = TestApp(APP_1_NAME, rabbitMqConn)
 
         app0.commandsService.addExecutor(AddElementExecutor())
 
@@ -79,12 +77,15 @@ class AllCommandsExecutorTest {
             remoteCommandsService
         }
 
-        override fun createRemoteCommandsService(): RemoteCommandsService {
-            return RabbitCommandsService(this, conntectionFactory)
+        override fun createProperties(): CommandsProperties {
+            val props = CommandsProperties()
+            props.appName = APP_0_NAME
+            props.appInstanceId = APP_0_ID
+            return props
         }
 
-        override fun getEcosWebAppContext(): EcosWebAppContext {
-            return EcosWebAppContextMock(APP_0_NAME, APP_0_ID)
+        override fun createRemoteCommandsService(): RemoteCommandsService {
+            return RabbitCommandsService(this, conntectionFactory)
         }
     }
 
@@ -95,11 +96,10 @@ class AllCommandsExecutorTest {
         }
 
         override fun createProperties(): CommandsProperties {
-            return CommandsProperties.create {}
-        }
-
-        override fun getEcosWebAppContext(): EcosWebAppContext? {
-            return EcosWebAppContextMock(APP_1_NAME, APP_1_ID)
+            val props = CommandsProperties()
+            props.appName = APP_1_NAME
+            props.appInstanceId = APP_1_ID
+            return props
         }
 
         override fun createRemoteCommandsService(): RemoteCommandsService {

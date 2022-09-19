@@ -17,7 +17,8 @@ class RabbitContext(
     private val onCommand: (Command) -> CommandResult?,
     private val onResult: (CommandResult) -> Unit,
     private val properties: CommandsProperties,
-    webappProps: EcosWebAppProperties
+    webappProps: EcosWebAppProperties,
+    listenMode: ListenMode
 ) {
 
     companion object {
@@ -46,24 +47,31 @@ class RabbitContext(
 
     init {
 
-        declareQueue(appComQueue, appComQueue)
         declareQueue(appErrQueue, appErrQueue)
-        declareQueue(appResQueue, appResQueue, durable = false)
-        declareQueue(instanceComQueue, allComQueueKey, durable = false)
-        declareQueue(instanceComQueue, instanceComQueue, durable = false)
 
-        comConsumerTag = addConsumer(appComQueue, Command::class.java) {
-                msg,
-                _ ->
-            handleCommandMqMessage(msg)
+        if (listenMode == ListenMode.COMMANDS || listenMode == ListenMode.ALL) {
+
+            declareQueue(appComQueue, appComQueue)
+            declareQueue(instanceComQueue, allComQueueKey, durable = false)
+            declareQueue(instanceComQueue, instanceComQueue, durable = false)
+
+            comConsumerTag = addConsumer(appComQueue, Command::class.java) { msg, _ ->
+                handleCommandMqMessage(msg)
+            }
+            instanceComConsumerTag = addConsumer(instanceComQueue, Command::class.java) { msg, _ ->
+                handleCommandMqMessage(msg)
+            }
+        } else {
+            comConsumerTag = ""
+            instanceComConsumerTag = ""
         }
-        instanceComConsumerTag = addConsumer(instanceComQueue, Command::class.java) {
-                msg, _ ->
-            handleCommandMqMessage(msg)
-        }
-        resConsumerTag = addConsumer(appResQueue, CommandResult::class.java) {
-                msg, _ ->
-            onResult(msg)
+        resConsumerTag = if (listenMode == ListenMode.RESULTS || listenMode == ListenMode.ALL) {
+            declareQueue(appResQueue, appResQueue, durable = false)
+            addConsumer(appResQueue, CommandResult::class.java) { msg, _ ->
+                onResult(msg)
+            }
+        } else {
+            ""
         }
     }
 
@@ -120,5 +128,13 @@ class RabbitContext(
 
     fun close() {
         channel.close()
+    }
+
+    // listen modes required to avoid deadlock
+    enum class ListenMode {
+        ALL,
+        RESULTS,
+        COMMANDS,
+        NONE
     }
 }
