@@ -14,6 +14,7 @@ import java.util.*
 import java.util.concurrent.*
 import java.util.function.Consumer
 import kotlin.concurrent.schedule
+import kotlin.concurrent.thread
 
 class RabbitCommandsService(
     private val factory: CommandsServiceFactory,
@@ -24,6 +25,7 @@ class RabbitCommandsService(
         val log = KotlinLogging.logger {}
     }
 
+    @Volatile
     private var contextToSendCommands: RabbitContext? = null
     private var initCommandsQueue = ConcurrentLinkedQueue<InitCommandItem>()
 
@@ -44,7 +46,7 @@ class RabbitCommandsService(
     )
 
     init {
-        addNewContext { rabbitCtx ->
+        addNewContext(RabbitContext.ListenMode.NONE) { rabbitCtx ->
 
             contextToSendCommands = rabbitCtx
             val futures = mutableListOf<CompletableFuture<Boolean>>()
@@ -61,24 +63,30 @@ class RabbitCommandsService(
                 }
                 commandItem = initCommandsQueue.poll()
             }
-            try {
-                CompletableFuture.allOf(*futures.toTypedArray()).get(1, TimeUnit.MINUTES)
-            } catch (e: Exception) {
-                log.error(e) { "Error while init commands result waiting" }
+            // init action should not block execution
+            thread(name = "init-commands-waiting-thread") {
+                try {
+                    CompletableFuture.allOf(*futures.toTypedArray()).get(1, TimeUnit.MINUTES)
+                } catch (e: Exception) {
+                    log.error(e) { "Error while init commands result waiting" }
+                }
             }
         }
-        repeat(factory.properties.concurrentCommandConsumers - 1) {
-            addNewContext {}
+        repeat(factory.properties.concurrentCommandConsumers) {
+            addNewContext(RabbitContext.ListenMode.ALL) {}
         }
+        // fix deadlock when all command consumers is busy and can't receive results
+        addNewContext(RabbitContext.ListenMode.RESULTS) {}
     }
 
-    private fun addNewContext(action: (RabbitContext) -> Unit) {
+    private fun addNewContext(listenMode: RabbitContext.ListenMode, action: (RabbitContext) -> Unit) {
         rabbitConnection.doWithNewChannel(properties.channelQos, Consumer { channel ->
             val context = RabbitContext(
                 channel,
                 { onCommandReceived(it) },
                 { onResultReceived(it) },
-                factory.properties
+                factory.properties,
+                listenMode
             )
             allContexts.add(context)
             action.invoke(context)
@@ -94,14 +102,17 @@ class RabbitCommandsService(
         }
     }
 
-    private fun onCommandReceived(command: Command) : CommandResult? {
+    private fun onCommandReceived(command: Command): CommandResult? {
 
         if (!validTargetApps.contains(command.targetApp)) {
-            throw RuntimeException("Incorrect target app name '${command.targetApp}'. " +
-                "Expected one of $validTargetApps")
+            throw RuntimeException(
+                "Incorrect target app name '${command.targetApp}'. " +
+                    "Expected one of $validTargetApps"
+            )
         }
         if (command.targetApp == "all"
-                && (!properties.listenBroadcast || !commandsService.containsExecutor(command.type))) {
+            && (!properties.listenBroadcast || !commandsService.containsExecutor(command.type))
+        ) {
 
             return null
         }

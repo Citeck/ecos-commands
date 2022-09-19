@@ -1,6 +1,7 @@
 package ru.citeck.ecos.commands.rabbit.test
 
 import com.github.fridujo.rabbitmq.mock.MockConnectionFactory
+import com.rabbitmq.client.ConnectionFactory
 import org.junit.jupiter.api.Test
 import ru.citeck.ecos.commands.CommandExecutor
 import ru.citeck.ecos.commands.CommandsProperties
@@ -24,7 +25,10 @@ class CommandBeforeRabbitInitTest {
         factory.host = "localhost"
         factory.username = "admin"
         factory.password = "admin"
-        val rabbitMqConn = RabbitMqConn(factory, initSleepMs = 1000)
+
+        val createConn: () -> RabbitMqConn = {
+            RabbitMqConn(factory, initSleepMs = 1000)
+        }
 
         val services0 = object : CommandsServiceFactory() {
             override fun createProperties(): CommandsProperties {
@@ -34,9 +38,10 @@ class CommandBeforeRabbitInitTest {
                 return props
             }
             override fun createRemoteCommandsService(): RemoteCommandsService {
-                return RabbitCommandsService(this, rabbitMqConn)
+                return RabbitCommandsService(this, createConn())
             }
         }
+        services0.remoteCommandsService
 
         val services1 = object : CommandsServiceFactory() {
             override fun createProperties(): CommandsProperties {
@@ -46,7 +51,7 @@ class CommandBeforeRabbitInitTest {
                 return props
             }
             override fun createRemoteCommandsService(): RemoteCommandsService {
-                return RabbitCommandsService(this, rabbitMqConn)
+                return RabbitCommandsService(this, createConn())
             }
         }
         services1.remoteCommandsService
