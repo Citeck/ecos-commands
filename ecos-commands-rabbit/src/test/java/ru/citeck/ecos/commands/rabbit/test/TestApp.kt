@@ -4,25 +4,24 @@ import ru.citeck.ecos.commands.CommandsProperties
 import ru.citeck.ecos.commands.CommandsServiceFactory
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
+import ru.citeck.ecos.commons.test.EcosWebAppContextMock
 import ru.citeck.ecos.rabbitmq.RabbitMqConn
-import java.util.concurrent.atomic.AtomicLong
+import ru.citeck.ecos.webapp.api.context.EcosWebAppContext
 
 class TestApp(val appName: String, private val conntectionFactory: RabbitMqConn) : CommandsServiceFactory() {
-
-    companion object {
-        private val idx = AtomicLong()
-    }
 
     init {
         remoteCommandsService
     }
 
+    override fun getEcosWebAppContext(): EcosWebAppContext {
+        return EcosWebAppContextMock(appName)
+    }
+
     override fun createProperties(): CommandsProperties {
-        val props = CommandsProperties()
-        props.appName = appName
-        props.appInstanceId = this.appName + ":" + idx.getAndIncrement()
-        props.listenBroadcast = false
-        return props
+        return CommandsProperties.create {
+            withListenBroadcast(false)
+        }
     }
 
     override fun createRemoteCommandsService(): RemoteCommandsService {

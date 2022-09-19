@@ -15,7 +15,6 @@ import ru.citeck.ecos.webapp.api.promise.Promise
 import java.lang.IllegalArgumentException
 import java.util.*
 import java.util.concurrent.*
-import java.util.function.Consumer
 import kotlin.concurrent.schedule
 import kotlin.concurrent.thread
 

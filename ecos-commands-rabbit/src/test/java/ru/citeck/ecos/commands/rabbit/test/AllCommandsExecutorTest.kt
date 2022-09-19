@@ -4,14 +4,8 @@ import com.github.fridujo.rabbitmq.mock.MockConnectionFactory
 import com.rabbitmq.client.ConnectionFactory
 import org.junit.jupiter.api.Test
 import ru.citeck.ecos.commands.CommandExecutor
-import ru.citeck.ecos.commands.CommandsProperties
-import ru.citeck.ecos.commands.CommandsServiceFactory
 import ru.citeck.ecos.commands.dto.Command
-import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
-import ru.citeck.ecos.commands.remote.RemoteCommandsService
-import ru.citeck.ecos.commons.test.EcosWebAppContextMock
 import ru.citeck.ecos.rabbitmq.RabbitMqConn
-import ru.citeck.ecos.webapp.api.context.EcosWebAppContext
 import kotlin.test.assertEquals
 
 class AllCommandsExecutorTest {
@@ -68,42 +62,6 @@ class AllCommandsExecutorTest {
         override fun execute(command: Command): Any {
             elements.add(command)
             return command
-        }
-    }
-
-    class App0(private val conntectionFactory: RabbitMqConn) : CommandsServiceFactory() {
-
-        init {
-            remoteCommandsService
-        }
-
-        override fun createProperties(): CommandsProperties {
-            val props = CommandsProperties()
-            props.appName = APP_0_NAME
-            props.appInstanceId = APP_0_ID
-            return props
-        }
-
-        override fun createRemoteCommandsService(): RemoteCommandsService {
-            return RabbitCommandsService(this, conntectionFactory)
-        }
-    }
-
-    class App1(private val conntectionFactory: RabbitMqConn) : CommandsServiceFactory() {
-
-        init {
-            remoteCommandsService
-        }
-
-        override fun createProperties(): CommandsProperties {
-            val props = CommandsProperties()
-            props.appName = APP_1_NAME
-            props.appInstanceId = APP_1_ID
-            return props
-        }
-
-        override fun createRemoteCommandsService(): RemoteCommandsService {
-            return RabbitCommandsService(this, conntectionFactory)
         }
     }
 }
