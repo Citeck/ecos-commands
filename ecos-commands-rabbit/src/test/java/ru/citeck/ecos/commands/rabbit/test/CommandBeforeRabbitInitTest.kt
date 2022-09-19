@@ -77,7 +77,7 @@ class CommandBeforeRabbitInitTest {
             CompletableFuture.supplyAsync { it.get() }
         }
 
-        CompletableFuture.allOf(*resultFuture.toTypedArray()).get(3, TimeUnit.SECONDS)
+        CompletableFuture.allOf(*resultFuture.toTypedArray()).get(10, TimeUnit.SECONDS)
 
         assertTrue(resultFuture.all { it.isDone })
         assertTrue(
