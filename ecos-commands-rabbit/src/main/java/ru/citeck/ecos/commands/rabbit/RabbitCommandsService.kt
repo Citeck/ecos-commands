@@ -85,19 +85,29 @@ class RabbitCommandsService(
     }
 
     private fun addNewContext(listenMode: RabbitContext.ListenMode, action: (RabbitContext) -> Unit) {
-        rabbitConnection.doWithNewChannel(
-            properties.channelQos
-        ) { channel ->
-            val context = RabbitContext(
-                channel,
-                { onCommandReceived(it) },
-                { onResultReceived(it) },
-                factory.properties,
-                factory.webappProps,
-                listenMode
-            )
-            allContexts.add(context)
-            action.invoke(context)
+        val addNewCtxAction = {
+            rabbitConnection.doWithNewChannel(
+                properties.channelQos
+            ) { channel ->
+                val context = RabbitContext(
+                    channel,
+                    { onCommandReceived(it) },
+                    { onResultReceived(it) },
+                    factory.properties,
+                    factory.webappProps,
+                    listenMode
+                )
+                allContexts.add(context)
+                action.invoke(context)
+            }
+        }
+        val webAppCtx = factory.getEcosWebAppContext()
+        if (webAppCtx != null) {
+            webAppCtx.doWhenAppReady {
+                addNewCtxAction.invoke()
+            }
+        } else {
+            addNewCtxAction.invoke()
         }
     }
 
