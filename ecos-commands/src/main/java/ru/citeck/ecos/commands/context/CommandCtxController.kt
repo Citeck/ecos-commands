@@ -2,11 +2,11 @@ package ru.citeck.ecos.commands.context
 
 interface CommandCtxController {
 
-    fun setCurrentUser(user: String) : String
+    fun setCurrentUser(user: String): String
 
-    fun getCurrentUser() : String
+    fun getCurrentUser(): String
 
-    fun setCurrentTenant(tenant: String) : String
+    fun setCurrentTenant(tenant: String): String
 
-    fun getCurrentTenant() : String
+    fun getCurrentTenant(): String
 }

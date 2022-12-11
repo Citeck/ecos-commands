@@ -25,11 +25,11 @@ data class CommandResult(
     val primaryError: Throwable? = null
 ) {
 
-    fun <T : Any> getResultAs(type: Class<T>) : T? {
+    fun <T : Any> getResultAs(type: Class<T>): T? {
         return Json.mapper.convert(result, type)
     }
 
-    fun <T : Any> getCommandAs(type: Class<T>) : T? {
+    fun <T : Any> getCommandAs(type: Class<T>): T? {
         return Json.mapper.convert(command.body, type)
     }
 
@@ -38,7 +38,7 @@ data class CommandResult(
         if (primaryError != null) {
             actionIfErrorIsNotNull?.run()
             CommandsService.log.error { "Throw error from command result: $this" }
-            throw primaryError;
+            throw primaryError
         }
     }
 }

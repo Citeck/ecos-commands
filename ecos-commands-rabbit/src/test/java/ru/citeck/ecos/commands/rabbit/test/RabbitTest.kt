@@ -8,9 +8,13 @@ import ru.citeck.ecos.commands.*
 import ru.citeck.ecos.commands.annotation.CommandType
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
+import ru.citeck.ecos.commons.test.EcosWebAppContextMock
 import ru.citeck.ecos.rabbitmq.RabbitMqConn
+import ru.citeck.ecos.webapp.api.context.EcosWebAppContext
 import java.lang.RuntimeException
+import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.collections.ArrayList
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -109,7 +113,7 @@ class RabbitTest {
 
     inner class GetAppInfoExecutor(factory: CommandsServiceFactory) : CommandExecutor<GetAppInfo> {
 
-        val props = factory.properties
+        val props = factory.webappProps
 
         override fun execute(command: GetAppInfo): Any? {
             return GetAppInfoExecutorRes(
@@ -165,12 +169,8 @@ class RabbitTest {
         init {
             remoteCommandsService
         }
-
-        override fun createProperties(): CommandsProperties {
-            val props = CommandsProperties()
-            props.appName = APP_0_NAME
-            props.appInstanceId = APP_0_ID
-            return props
+        override fun getEcosWebAppContext(): EcosWebAppContext {
+            return EcosWebAppContextMock(APP_0_NAME, APP_0_ID)
         }
 
         override fun createRemoteCommandsService(): RemoteCommandsService {
@@ -183,12 +183,8 @@ class RabbitTest {
         init {
             remoteCommandsService
         }
-
-        override fun createProperties(): CommandsProperties {
-            val props = CommandsProperties()
-            props.appName = APP_1_NAME
-            props.appInstanceId = APP_1_ID
-            return props
+        override fun getEcosWebAppContext(): EcosWebAppContext {
+            return EcosWebAppContextMock(APP_1_NAME, APP_1_ID)
         }
 
         override fun createRemoteCommandsService(): RemoteCommandsService {

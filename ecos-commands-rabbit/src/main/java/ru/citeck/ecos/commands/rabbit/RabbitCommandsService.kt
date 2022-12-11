@@ -8,12 +8,15 @@ import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
 import ru.citeck.ecos.commands.utils.CommandUtils
 import ru.citeck.ecos.commands.utils.WeakValuesMap
+import ru.citeck.ecos.commons.promise.Promises
+import ru.citeck.ecos.context.lib.auth.AuthContext
 import ru.citeck.ecos.rabbitmq.RabbitMqConn
+import ru.citeck.ecos.webapp.api.promise.Promise
 import java.lang.IllegalArgumentException
 import java.util.*
 import java.util.concurrent.*
-import java.util.function.Consumer
 import kotlin.concurrent.schedule
+import kotlin.concurrent.thread
 
 class RabbitCommandsService(
     private val factory: CommandsServiceFactory,
@@ -24,6 +27,7 @@ class RabbitCommandsService(
         val log = KotlinLogging.logger {}
     }
 
+    @Volatile
     private var contextToSendCommands: RabbitContext? = null
     private var initCommandsQueue = ConcurrentLinkedQueue<InitCommandItem>()
 
@@ -31,6 +35,7 @@ class RabbitCommandsService(
 
     private val commandsService: CommandsService = factory.commandsService
     private val properties = factory.properties
+    private val webappProps = factory.webappProps
 
     private val commands = WeakValuesMap<String, CompletableFuture<CommandResult>>()
     private val commandsForGroup = WeakValuesMap<String, GroupResultFuture>()
@@ -38,13 +43,13 @@ class RabbitCommandsService(
     private val timer = Timer("RabbitCommandsTimer", false)
 
     private val validTargetApps = setOf(
-        properties.appName,
-        CommandUtils.getTargetAppByAppInstanceId(properties.appInstanceId),
+        webappProps.appName,
+        CommandUtils.getTargetAppByAppInstanceId(webappProps.appInstanceId),
         "all"
     )
 
     init {
-        addNewContext { rabbitCtx ->
+        addNewContext(RabbitContext.ListenMode.NONE) { rabbitCtx ->
 
             contextToSendCommands = rabbitCtx
             val futures = mutableListOf<CompletableFuture<Boolean>>()
@@ -53,36 +58,57 @@ class RabbitCommandsService(
             while (commandItem != null) {
                 try {
                     val localItem = commandItem
-                    futures.add(executeImpl(rabbitCtx, commandItem.command).thenApplyAsync { res ->
-                        localItem.resultFuture.complete(res)
-                    })
+                    futures.add(
+                        executeImpl(rabbitCtx, commandItem.command).thenApplyAsync { res ->
+                            localItem.resultFuture.complete(res)
+                        }
+                    )
                 } catch (e: Exception) {
                     log.error(e) { "Init command can't be executed: ${commandItem.command}" }
                 }
                 commandItem = initCommandsQueue.poll()
             }
-            try {
-                CompletableFuture.allOf(*futures.toTypedArray()).get(1, TimeUnit.MINUTES)
-            } catch (e: Exception) {
-                log.error(e) { "Error while init commands result waiting" }
+            // init action should not block execution
+            thread(name = "init-commands-waiting-thread") {
+                try {
+                    CompletableFuture.allOf(*futures.toTypedArray()).get(1, TimeUnit.MINUTES)
+                } catch (e: Exception) {
+                    log.error(e) { "Error while init commands result waiting" }
+                }
             }
         }
-        repeat(factory.properties.concurrentCommandConsumers - 1) {
-            addNewContext {}
+        repeat(factory.properties.concurrentCommandConsumers) {
+            addNewContext(RabbitContext.ListenMode.ALL) {}
         }
+        // fix deadlock when all command consumers is busy and can't receive results
+        addNewContext(RabbitContext.ListenMode.RESULTS) {}
     }
 
-    private fun addNewContext(action: (RabbitContext) -> Unit) {
-        rabbitConnection.doWithNewChannel(properties.channelQos, Consumer { channel ->
-            val context = RabbitContext(
-                channel,
-                { onCommandReceived(it) },
-                { onResultReceived(it) },
-                factory.properties
-            )
-            allContexts.add(context)
-            action.invoke(context)
-        })
+    private fun addNewContext(listenMode: RabbitContext.ListenMode, action: (RabbitContext) -> Unit) {
+        val addNewCtxAction = {
+            rabbitConnection.doWithNewChannel(
+                properties.channelQos
+            ) { channel ->
+                val context = RabbitContext(
+                    channel,
+                    { onCommandReceived(it) },
+                    { onResultReceived(it) },
+                    factory.properties,
+                    factory.webappProps,
+                    listenMode
+                )
+                allContexts.add(context)
+                action.invoke(context)
+            }
+        }
+        val webAppCtx = factory.getEcosWebAppContext()
+        if (webAppCtx != null) {
+            webAppCtx.doWhenAppReady {
+                addNewCtxAction.invoke()
+            }
+        } else {
+            addNewCtxAction.invoke()
+        }
     }
 
     private fun onResultReceived(result: CommandResult) {
@@ -94,54 +120,69 @@ class RabbitCommandsService(
         }
     }
 
-    private fun onCommandReceived(command: Command) : CommandResult? {
+    private fun onCommandReceived(command: Command): CommandResult? {
 
         if (!validTargetApps.contains(command.targetApp)) {
-            throw RuntimeException("Incorrect target app name '${command.targetApp}'. " +
-                "Expected one of $validTargetApps")
+            throw RuntimeException(
+                "Incorrect target app name '${command.targetApp}'. " +
+                    "Expected one of $validTargetApps"
+            )
         }
-        if (command.targetApp == "all"
-                && (!properties.listenBroadcast || !commandsService.containsExecutor(command.type))) {
+        val listenBroadcast = properties.listenBroadcast && factory.getEcosWebAppContext()?.isReady() == true
+
+        if (command.targetApp == "all" &&
+            (!listenBroadcast || !commandsService.containsExecutor(command.type))
+        ) {
 
             return null
         }
-        return commandsService.executeLocal(command)
+        return AuthContext.runAsSystem {
+            commandsService.executeLocal(command)
+        }
     }
 
-    override fun executeForGroup(command: Command): Future<List<CommandResult>> {
+    override fun executeForGroup(command: Command): Promise<List<CommandResult>> {
 
-        val ctxToSendCommands = contextToSendCommands ?: return CompletableFuture.completedFuture(emptyList())
+        val ctxToSendCommands = contextToSendCommands ?: return Promises.resolve(emptyList())
+
+        val future = GroupResultFuture()
 
         val ttlMs = command.ttl?.toMillis() ?: 0
         if (ttlMs <= 0 && ttlMs > TimeUnit.MINUTES.toMillis(10)) {
-            throw IllegalArgumentException("Illegal ttl for group command: $ttlMs")
+            future.completeExceptionally(IllegalArgumentException("Illegal ttl for group command: $ttlMs"))
+            return Promises.create(future)
         }
-        val future = GroupResultFuture()
         commandsForGroup.put(command.id, future)
         if (commandsForGroup.size() > 10_000) {
             log.warn { "CommandsForGroup size is too bit. Potentially memory leak. Size: " + commandsForGroup.size() }
         }
         try {
             ctxToSendCommands.sendCommand(command)
-        } catch (e: Exception) {
+            timer.schedule(
+                object : TimerTask() {
+                    override fun run() {
+                        future.flushResults()
+                    }
+                },
+                ttlMs
+            )
+        } catch (e: Throwable) {
             commandsForGroup.remove(command.id)
-            throw e
+            future.completeExceptionally(e)
         }
-        timer.schedule(ttlMs) {
-            future.flushResults()
-        }
-        return future
+        return Promises.create(future)
     }
 
-    override fun execute(command: Command): Future<CommandResult> {
+    override fun execute(command: Command): Promise<CommandResult> {
         val ctxToSendCommands = contextToSendCommands
-        return if (ctxToSendCommands == null) {
+        val future = if (ctxToSendCommands == null) {
             val resultFuture = CompletableFuture<CommandResult>()
             initCommandsQueue.add(InitCommandItem(command, resultFuture))
             resultFuture
         } else {
             executeImpl(ctxToSendCommands, command)
         }
+        return Promises.create(future)
     }
 
     private fun executeImpl(ctxToSendCommands: RabbitContext, command: Command): CompletableFuture<CommandResult> {
@@ -152,9 +193,9 @@ class RabbitCommandsService(
         }
         try {
             ctxToSendCommands.sendCommand(command)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             commands.remove(command.id)
-            throw e
+            future.completeExceptionally(e)
         }
         return future
     }

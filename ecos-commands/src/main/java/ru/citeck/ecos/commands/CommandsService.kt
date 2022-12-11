@@ -3,34 +3,34 @@ package ru.citeck.ecos.commands
 import mu.KotlinLogging
 import ru.citeck.ecos.commands.annotation.CommandType
 import ru.citeck.ecos.commands.dto.Command
-import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.dto.CommandError
+import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.exceptions.ExecutorNotFound
+import ru.citeck.ecos.commands.future.CommandFuture
+import ru.citeck.ecos.commands.future.CommandFutureImpl
 import ru.citeck.ecos.commands.utils.CommandErrorUtils
 import ru.citeck.ecos.commands.utils.CommandUtils
-import ru.citeck.ecos.commands.utils.FutureWithTimeout
 import ru.citeck.ecos.commons.json.Json
+import ru.citeck.ecos.commons.promise.Promises
+import ru.citeck.ecos.webapp.api.properties.EcosWebAppProperties
 import java.time.Duration
 import java.time.Instant
 import java.util.*
-import java.util.concurrent.Callable
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 import kotlin.collections.ArrayList
 import kotlin.reflect.KClass
 import kotlin.reflect.full.findAnnotation
 
-private fun needCommandType(command: Any?) : String {
+private fun needCommandType(command: Any?): String {
     if (command == null) {
         throw RuntimeException("Command type is undefined for null body")
     }
-    return getCommandType(command) ?:
-        throw RuntimeException("Command type is undefined for type ${command::class}. See CommandType annotation")
+    return getCommandType(command)
+        ?: throw RuntimeException("Command type is undefined for type ${command::class}. See CommandType annotation")
 }
 
-private fun getCommandType(command: Any?) : String? {
+private fun getCommandType(command: Any?): String? {
     if (command == null) {
         return null
     }
@@ -44,33 +44,34 @@ class CommandsService(factory: CommandsServiceFactory) {
     }
 
     private val props = factory.properties
+    private val webappProps = factory.webappProps
     private val remote by lazy { factory.remoteCommandsService }
     private val txnManager = factory.transactionManager
     private val ctxManager = factory.commandCtxManager
 
     private val executors = ConcurrentHashMap<String, ExecutorInfo>()
 
-    fun buildCommand(block: CommandBuilder.() -> Unit) : Command {
-        return CommandBuilder(props, ctxManager.getCurrentUser())
+    fun buildCommand(block: CommandBuilder.() -> Unit): Command {
+        return CommandBuilder(props, webappProps, ctxManager.getCurrentUser())
             .apply(block)
             .build()
     }
 
-    fun buildCommand(base: Command, block: CommandBuilder.() -> Unit) : Command {
-        return CommandBuilder(props, ctxManager.getCurrentUser())
+    fun buildCommand(base: Command, block: CommandBuilder.() -> Unit): Command {
+        return CommandBuilder(props, webappProps, ctxManager.getCurrentUser())
             .set(base)
             .apply(block)
             .build()
     }
 
-    fun executeSync(command: Any) : CommandResult {
+    fun executeSync(command: Any): CommandResult {
         return executeSync {
             body = Json.mapper.toJson(command)
             type = needCommandType(command)
         }
     }
 
-    fun executeSync(command: Any, targetApp: String) : CommandResult {
+    fun executeSync(command: Any, targetApp: String): CommandResult {
         return executeSync {
             body = Json.mapper.toJson(command)
             type = needCommandType(command)
@@ -78,14 +79,14 @@ class CommandsService(factory: CommandsServiceFactory) {
         }
     }
 
-    fun executeForGroupSync(command: Any) : List<CommandResult> {
+    fun executeForGroupSync(command: Any): List<CommandResult> {
         return executeForGroupSync {
             body = Json.mapper.toJson(command)
             type = needCommandType(command)
         }
     }
 
-    fun executeForGroupSync(command: Any, targetApp: String) : List<CommandResult> {
+    fun executeForGroupSync(command: Any, targetApp: String): List<CommandResult> {
         return executeForGroupSync {
             body = Json.mapper.toJson(command)
             type = needCommandType(command)
@@ -93,38 +94,38 @@ class CommandsService(factory: CommandsServiceFactory) {
         }
     }
 
-    fun executeSync(block: CommandBuilder.() -> Unit) : CommandResult {
+    fun executeSync(block: CommandBuilder.() -> Unit): CommandResult {
         return executeSync(buildCommand(block))
     }
 
-    fun executeSync(command: Command) : CommandResult {
+    fun executeSync(command: Command): CommandResult {
         return execute(command).get(props.commandTimeoutMs, TimeUnit.MILLISECONDS)
     }
 
-    fun executeForGroupSync(block: CommandBuilder.() -> Unit) : List<CommandResult> {
+    fun executeForGroupSync(block: CommandBuilder.() -> Unit): List<CommandResult> {
         return executeForGroup(block).get(props.commandTimeoutMs, TimeUnit.MILLISECONDS)
     }
 
-    fun execute(command: Any) : Future<CommandResult> {
+    fun execute(command: Any): CommandFuture<CommandResult> {
         return execute {
             body = Json.mapper.toJson(command)
             type = needCommandType(command)
         }
     }
 
-    fun executeForGroup(command: Any) : Future<List<CommandResult>> {
+    fun executeForGroup(command: Any): CommandFuture<List<CommandResult>> {
         return executeForGroup {
             body = Json.mapper.toJson(command)
             type = needCommandType(command)
         }
     }
 
-    fun execute(block: CommandBuilder.() -> Unit) : Future<CommandResult> {
+    fun execute(block: CommandBuilder.() -> Unit): CommandFuture<CommandResult> {
         return execute(buildCommand(block))
     }
 
-    fun executeForGroup(block: CommandBuilder.() -> Unit) : Future<List<CommandResult>> {
-        val builder = CommandBuilder(props, ctxManager.getCurrentUser())
+    fun executeForGroup(block: CommandBuilder.() -> Unit): CommandFuture<List<CommandResult>> {
+        val builder = CommandBuilder(props, webappProps, ctxManager.getCurrentUser())
         builder.ttl = Duration.ofSeconds(2)
         val command = builder.apply(block).build()
         return executeForGroup(command)
@@ -134,7 +135,7 @@ class CommandsService(factory: CommandsServiceFactory) {
         return executors.containsKey(type) || executors.containsKey("*")
     }
 
-    fun executeLocal(command: Command) : CommandResult {
+    fun executeLocal(command: Command): CommandResult {
 
         val started = Instant.now()
 
@@ -150,7 +151,6 @@ class CommandsService(factory: CommandsServiceFactory) {
             if (executorInfo.commandType == Command::class) {
 
                 executorCommand = command
-
             } else if (executorInfo.commandType !== Any::class) {
 
                 @Suppress("UNCHECKED_CAST")
@@ -163,13 +163,11 @@ class CommandsService(factory: CommandsServiceFactory) {
                 tenant = command.tenant,
                 appName = command.sourceApp,
                 appInstanceId = command.sourceAppId,
-                action = Callable {
-                    txnManager.doInTransaction(
-                        Callable { executorInfo.executor.execute(executorCommand) }
-                    )
-                })
-
-        } catch (e : Throwable) {
+                action = {
+                    txnManager.doInTransaction { executorInfo.executor.execute(executorCommand) }
+                }
+            )
+        } catch (e: Throwable) {
             primaryError = e
             log.error("Command execution error", e)
             errors.add(CommandErrorUtils.convertException(e))
@@ -183,27 +181,37 @@ class CommandsService(factory: CommandsServiceFactory) {
             command = command,
             result = Json.mapper.toJson(resultObj),
             errors = errors,
-            appName = props.appName,
-            appInstanceId = props.appInstanceId,
+            appName = webappProps.appName,
+            appInstanceId = webappProps.appInstanceId,
             primaryError = primaryError
         )
     }
 
-    fun executeForGroup(command: Command) : Future<List<CommandResult>> {
-        val future = remote.executeForGroup(command)
-        return FutureWithTimeout(future, props.commandTimeoutMs)
+    fun executeForGroup(command: Command): CommandFuture<List<CommandResult>> {
+        val promise = try {
+            remote.executeForGroup(command)
+        } catch (e: Throwable) {
+            return CommandFutureImpl(Promises.reject(e))
+        }
+        val promiseWithTimeout = Promises.withTimeout(promise, Duration.ofMillis(props.commandTimeoutMs))
+        return CommandFutureImpl(promiseWithTimeout)
     }
 
-    fun execute(command: Command) : Future<CommandResult> {
+    fun execute(command: Command): CommandFuture<CommandResult> {
 
-        return if (command.targetApp == props.appName) {
-
-            CompletableFuture.completedFuture(executeLocal(command))
-
+        val promise = if (command.targetApp == webappProps.appName) {
+            Promises.resolve(executeLocal(command))
         } else {
-
-            FutureWithTimeout(remote.execute(command), props.commandTimeoutMs)
+            try {
+                Promises.withTimeout(
+                    remote.execute(command),
+                    Duration.ofMillis(props.commandTimeoutMs)
+                )
+            } catch (e: Throwable) {
+                Promises.reject(e)
+            }
         }
+        return CommandFutureImpl(promise)
     }
 
     fun <T : Any?> addExecutor(executor: CommandExecutor<T>) {
@@ -232,28 +240,30 @@ class CommandsService(factory: CommandsServiceFactory) {
         if (comType?.isNotBlank() == true) {
             executors[comType] = ExecutorInfo(executor, classifier)
         } else {
-            log.warn { "Command type is undefined. Please add CommandType annotation to CommandDto. " +
-                "Command executor will be ignored: ${executor::class.qualifiedName}" }
+            log.warn {
+                "Command type is undefined. Please add CommandType annotation to CommandDto. " +
+                    "Command executor will be ignored: ${executor::class.qualifiedName}"
+            }
         }
     }
 
-    data class ExecutorInfo (
+    data class ExecutorInfo(
         val executor: CommandExecutor<Any?>,
         val commandType: KClass<*>
     )
 
-    class CommandBuilder(props: CommandsProperties, val user: String) {
+    class CommandBuilder(props: CommandsProperties, webappProps: EcosWebAppProperties, val user: String) {
 
         var id: String = UUID.randomUUID().toString()
         var tenant: String = ""
         var time: Instant = Instant.now()
 
-        var sourceApp: String = props.appName
-        var sourceAppId: String = props.appInstanceId
+        var sourceApp: String = webappProps.appName
+        var sourceAppId: String = webappProps.appInstanceId
         var transaction: TransactionType = TransactionType.REQUIRED
         var ttl: Duration? = Duration.ofMillis(props.commandTimeoutMs)
 
-        var targetApp: String = props.appName
+        var targetApp: String = webappProps.appName
         var type: String? = null
         var body: Any? = null
 
@@ -287,7 +297,7 @@ class CommandsService(factory: CommandsServiceFactory) {
             return this
         }
 
-        fun set(comm: Command) : CommandBuilder {
+        fun set(comm: Command): CommandBuilder {
 
             this.id = comm.id
             this.tenant = comm.tenant
@@ -306,7 +316,7 @@ class CommandsService(factory: CommandsServiceFactory) {
             return this
         }
 
-        fun build() : Command {
+        fun build(): Command {
             return Command(
                 id = id,
                 tenant = tenant,

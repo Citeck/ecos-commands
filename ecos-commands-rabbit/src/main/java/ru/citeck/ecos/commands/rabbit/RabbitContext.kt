@@ -5,17 +5,20 @@ import mu.KotlinLogging
 import ru.citeck.ecos.commands.CommandsProperties
 import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandResult
-import ru.citeck.ecos.commands.utils.CommandUtils
 import ru.citeck.ecos.commands.utils.CommandErrorUtils
+import ru.citeck.ecos.commands.utils.CommandUtils
 import ru.citeck.ecos.commons.json.Json
 import ru.citeck.ecos.rabbitmq.RabbitMqChannel
+import ru.citeck.ecos.webapp.api.properties.EcosWebAppProperties
 import kotlin.collections.HashMap
 
 class RabbitContext(
     private val channel: RabbitMqChannel,
     private val onCommand: (Command) -> CommandResult?,
     private val onResult: (CommandResult) -> Unit,
-    private val properties: CommandsProperties
+    private val properties: CommandsProperties,
+    webappProps: EcosWebAppProperties,
+    listenMode: ListenMode
 ) {
 
     companion object {
@@ -29,12 +32,12 @@ class RabbitContext(
         private const val RES_QUEUE = "commands.%s.res.%s"
     }
 
-    private val appComQueue = COM_QUEUE.format(properties.appName)
-    private val appErrQueue = ERR_QUEUE.format(properties.appName)
-    private val appResQueue = getResQueueId(properties.appName, properties.appInstanceId)
+    private val appComQueue = COM_QUEUE.format(webappProps.appName)
+    private val appErrQueue = ERR_QUEUE.format(webappProps.appName)
+    private val appResQueue = getResQueueId(webappProps.appName, webappProps.appInstanceId)
 
     private val instanceComQueue = COM_QUEUE.format(
-        CommandUtils.getTargetAppByAppInstanceId(properties.appInstanceId)
+        CommandUtils.getTargetAppByAppInstanceId(webappProps.appInstanceId)
     )
     private val allComQueueKey = COM_QUEUE.format("all")
 
@@ -44,24 +47,31 @@ class RabbitContext(
 
     init {
 
-        declareQueue(appComQueue, appComQueue)
         declareQueue(appErrQueue, appErrQueue)
-        declareQueue(appResQueue, appResQueue, durable = false)
-        declareQueue(instanceComQueue, allComQueueKey, durable = false)
-        declareQueue(instanceComQueue, instanceComQueue, durable = false)
 
-        comConsumerTag = addConsumer(appComQueue, Command::class.java) {
-            msg,
-            _ ->
-            handleCommandMqMessage(msg)
+        if (listenMode == ListenMode.COMMANDS || listenMode == ListenMode.ALL) {
+
+            declareQueue(appComQueue, appComQueue)
+            declareQueue(instanceComQueue, allComQueueKey, durable = false)
+            declareQueue(instanceComQueue, instanceComQueue, durable = false)
+
+            comConsumerTag = addConsumer(appComQueue, Command::class.java) { msg, _ ->
+                handleCommandMqMessage(msg)
+            }
+            instanceComConsumerTag = addConsumer(instanceComQueue, Command::class.java) { msg, _ ->
+                handleCommandMqMessage(msg)
+            }
+        } else {
+            comConsumerTag = ""
+            instanceComConsumerTag = ""
         }
-        instanceComConsumerTag = addConsumer(instanceComQueue, Command::class.java) {
-            msg, _ ->
-            handleCommandMqMessage(msg)
-        }
-        resConsumerTag = addConsumer(appResQueue, CommandResult::class.java) {
-            msg, _ ->
-            onResult(msg)
+        resConsumerTag = if (listenMode == ListenMode.RESULTS || listenMode == ListenMode.ALL) {
+            declareQueue(appResQueue, appResQueue, durable = false)
+            addConsumer(appResQueue, CommandResult::class.java) { msg, _ ->
+                onResult(msg)
+            }
+        } else {
+            ""
         }
     }
 
@@ -118,5 +128,13 @@ class RabbitContext(
 
     fun close() {
         channel.close()
+    }
+
+    // listen modes required to avoid deadlock
+    enum class ListenMode {
+        ALL,
+        RESULTS,
+        COMMANDS,
+        NONE
     }
 }

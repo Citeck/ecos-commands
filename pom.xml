@@ -7,10 +7,12 @@
 
     <groupId>ru.citeck.ecos</groupId>
     <artifactId>ecos-commands-project</artifactId>
-    <version>2.7.0-SNAPSHOT</version>
+    <version>${revision}</version>
     <packaging>pom</packaging>
 
     <properties>
+
+        <revision>2.7.15</revision>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.target>1.8</maven.compiler.target>
@@ -18,13 +20,15 @@
 
         <junit.version>5.4.0</junit.version>
         <slf4j.version>1.7.28</slf4j.version>
-        <kotlin.version>1.5.21</kotlin.version>
+        <kotlin.version>1.6.21</kotlin.version>
         <kotlin.logging.version>1.12.5</kotlin.logging.version>
         <commons-lang3.version>3.8.1</commons-lang3.version>
         <commons-beanutils.version>1.9.3</commons-beanutils.version>
         <commons-io.version>2.6</commons-io.version>
+        <ecos.webapp-api.version>1.2.2</ecos.webapp-api.version>
+        <ecos.context-lib.version>1.2.3</ecos.context-lib.version>
 
-        <ecos.commons.version>2.5.0</ecos.commons.version>
+        <ecos.commons.version>2.8.6</ecos.commons.version>
         <ecos.jackson.version>2.10.4.3</ecos.jackson.version>
 
     </properties>
@@ -35,6 +39,13 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>${slf4j.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>ru.citeck.ecos.webapp</groupId>
+            <artifactId>ecos-webapp-api</artifactId>
+            <version>${ecos.webapp-api.version}</version>
             <scope>provided</scope>
         </dependency>
 
@@ -109,10 +120,24 @@
         </dependency>
 
         <dependency>
+            <groupId>ru.citeck.ecos.context</groupId>
+            <artifactId>ecos-context-lib</artifactId>
+            <version>${ecos.context-lib.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
             <groupId>ru.citeck.ecos.commons</groupId>
             <artifactId>ecos-commons</artifactId>
             <version>${ecos.commons.version}</version>
             <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>ru.citeck.ecos.commons</groupId>
+            <artifactId>ecos-commons-test</artifactId>
+            <version>${ecos.commons.version}</version>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
@@ -129,11 +154,67 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>2.15.0</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
 
+
+        <pluginManagement>
+
+            <plugins>
+                <plugin>
+                    <groupId>com.github.gantsign.maven</groupId>
+                    <artifactId>ktlint-maven-plugin</artifactId>
+                    <version>1.13.1</version>
+                    <executions>
+                        <execution>
+                            <id>format</id>
+                            <goals>
+                                <goal>format</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+
+        </pluginManagement>
+
         <plugins>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>1.2.7</version>
+                <configuration>
+                    <updatePomFile>true</updatePomFile>
+                    <flattenMode>resolveCiFriendliesOnly</flattenMode>
+                </configuration>
+                <executions>
+                    <!-- enable flattening -->
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <!-- ensure proper cleanup -->
+                    <execution>
+                        <id>flatten.clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
 
             <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
@@ -183,7 +264,6 @@
     <modules>
         <module>ecos-commands</module>
         <module>ecos-commands-rabbit</module>
-        <module>ecos-commands-spring</module>
     </modules>
 
     <repositories>

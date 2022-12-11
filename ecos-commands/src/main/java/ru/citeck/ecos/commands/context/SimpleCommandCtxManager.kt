@@ -10,7 +10,7 @@ class SimpleCommandCtxManager(factory: CommandsServiceFactory) : CommandCtxManag
     private val context = ThreadLocal.withInitial { CtxState() }
     private var isInContext = ThreadLocal.withInitial { false }
 
-    override fun getCurrentUser() : String {
+    override fun getCurrentUser(): String {
         return if (isInContext.get()) {
             context.get().currentUser
         } else {
@@ -18,7 +18,7 @@ class SimpleCommandCtxManager(factory: CommandsServiceFactory) : CommandCtxManag
         }
     }
 
-    override fun getCurrentTenant() : String {
+    override fun getCurrentTenant(): String {
         return if (isInContext.get()) {
             context.get().currentTenant
         } else {
@@ -26,19 +26,21 @@ class SimpleCommandCtxManager(factory: CommandsServiceFactory) : CommandCtxManag
         }
     }
 
-    override fun getSourceAppName() : String {
+    override fun getSourceAppName(): String {
         return context.get().appName
     }
 
-    override fun getSourceAppInstanceId() : String {
+    override fun getSourceAppInstanceId(): String {
         return context.get().appInstanceId
     }
 
-    override fun <T> runWith(user: String,
-                             tenant: String,
-                             appName: String,
-                             appInstanceId: String,
-                             action: Callable<T>) : T {
+    override fun <T> runWith(
+        user: String,
+        tenant: String,
+        appName: String,
+        appInstanceId: String,
+        action: Callable<T>
+    ): T {
 
         val userBefore = controller.getCurrentUser()
         val tenantBefore = controller.getCurrentTenant()
@@ -58,7 +60,6 @@ class SimpleCommandCtxManager(factory: CommandsServiceFactory) : CommandCtxManag
             ctx.appInstanceId = appInstanceId
 
             action.call()
-
         } finally {
 
             isInContext.set(false)
@@ -79,5 +80,4 @@ class SimpleCommandCtxManager(factory: CommandsServiceFactory) : CommandCtxManag
         var appName: String = "",
         var appInstanceId: String = ""
     )
-
 }

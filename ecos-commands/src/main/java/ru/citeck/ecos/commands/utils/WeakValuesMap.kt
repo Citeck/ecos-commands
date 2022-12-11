@@ -27,7 +27,9 @@ class WeakValuesMap<K, V> {
         val oldRef = refsQueue.poll()
         if (oldRef != null) {
             val oldKey = keyByRef.remove(oldRef)
-            data.remove(oldKey)
+            if (oldKey != null) {
+                data.remove(oldKey)
+            }
         }
 
         val ref = WeakReference(value, refsQueue)
@@ -36,7 +38,7 @@ class WeakValuesMap<K, V> {
     }
 
     @Synchronized
-    fun get(key: K) : V? {
+    fun get(key: K): V? {
         val weakRef = data[key] ?: return null
         val result = weakRef.get()
         return if (result == null) {
@@ -48,7 +50,7 @@ class WeakValuesMap<K, V> {
     }
 
     @Synchronized
-    fun size() : Int {
+    fun size(): Int {
         return data.size
     }
 }

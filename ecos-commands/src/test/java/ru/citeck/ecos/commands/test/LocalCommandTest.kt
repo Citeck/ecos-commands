@@ -52,7 +52,7 @@ class LocalCommandTest {
 
     inner class AddElementExecutor : CommandExecutor<AddElementCommand> {
 
-        override fun execute(command: AddElementCommand) : Any {
+        override fun execute(command: AddElementCommand): Any {
             if (command.element == EX_TEST_ELEM) {
                 throw RuntimeException(EX_TEST_MSG)
             }
