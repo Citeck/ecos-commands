@@ -8,8 +8,8 @@ import ru.citeck.ecos.commands.remote.NoopRemoteCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
 import ru.citeck.ecos.commands.transaction.SimpleTxnManager
 import ru.citeck.ecos.commands.transaction.TransactionManager
-import ru.citeck.ecos.webapp.api.context.EcosWebAppContext
-import ru.citeck.ecos.webapp.api.properties.EcosWebAppProperties
+import ru.citeck.ecos.webapp.api.EcosWebAppApi
+import ru.citeck.ecos.webapp.api.properties.EcosWebAppProps
 
 open class CommandsServiceFactory {
 
@@ -21,7 +21,7 @@ open class CommandsServiceFactory {
     val commandCtxController by lazy { createCommandCtxController() }
 
     val webappProps by lazy {
-        getEcosWebAppContext()?.getProperties() ?: EcosWebAppProperties("", "")
+        getEcosWebAppApi()?.getProperties() ?: EcosWebAppProps("", "")
     }
 
     protected open fun createCommandsService(): CommandsService {
@@ -48,7 +48,7 @@ open class CommandsServiceFactory {
         return SimpleCommandCtxController()
     }
 
-    open fun getEcosWebAppContext(): EcosWebAppContext? {
+    open fun getEcosWebAppApi(): EcosWebAppApi? {
         return null
     }
 }

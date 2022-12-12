@@ -12,7 +12,7 @@ import ru.citeck.ecos.commands.utils.CommandErrorUtils
 import ru.citeck.ecos.commands.utils.CommandUtils
 import ru.citeck.ecos.commons.json.Json
 import ru.citeck.ecos.commons.promise.Promises
-import ru.citeck.ecos.webapp.api.properties.EcosWebAppProperties
+import ru.citeck.ecos.webapp.api.properties.EcosWebAppProps
 import java.time.Duration
 import java.time.Instant
 import java.util.*
@@ -252,7 +252,7 @@ class CommandsService(factory: CommandsServiceFactory) {
         val commandType: KClass<*>
     )
 
-    class CommandBuilder(props: CommandsProperties, webappProps: EcosWebAppProperties, val user: String) {
+    class CommandBuilder(props: CommandsProperties, webappProps: EcosWebAppProps, val user: String) {
 
         var id: String = UUID.randomUUID().toString()
         var tenant: String = ""

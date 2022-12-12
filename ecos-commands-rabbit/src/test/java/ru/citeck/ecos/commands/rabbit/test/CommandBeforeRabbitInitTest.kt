@@ -8,9 +8,9 @@ import ru.citeck.ecos.commands.annotation.CommandType
 import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
-import ru.citeck.ecos.commons.test.EcosWebAppContextMock
+import ru.citeck.ecos.commons.test.EcosWebAppApiMock
 import ru.citeck.ecos.rabbitmq.RabbitMqConn
-import ru.citeck.ecos.webapp.api.context.EcosWebAppContext
+import ru.citeck.ecos.webapp.api.EcosWebAppApi
 import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
@@ -31,8 +31,8 @@ class CommandBeforeRabbitInitTest {
         }
 
         val services0 = object : CommandsServiceFactory() {
-            override fun getEcosWebAppContext(): EcosWebAppContext? {
-                return EcosWebAppContextMock("test0", "test0-" + UUID.randomUUID())
+            override fun getEcosWebAppApi(): EcosWebAppApi? {
+                return EcosWebAppApiMock("test0", "test0-" + UUID.randomUUID())
             }
 
             override fun createRemoteCommandsService(): RemoteCommandsService {
@@ -42,8 +42,8 @@ class CommandBeforeRabbitInitTest {
         services0.remoteCommandsService
 
         val services1 = object : CommandsServiceFactory() {
-            override fun getEcosWebAppContext(): EcosWebAppContext {
-                return EcosWebAppContextMock("test1", "test1-" + UUID.randomUUID())
+            override fun getEcosWebAppApi(): EcosWebAppApi {
+                return EcosWebAppApiMock("test1", "test1-" + UUID.randomUUID())
             }
             override fun createRemoteCommandsService(): RemoteCommandsService {
                 return RabbitCommandsService(this, createConn())

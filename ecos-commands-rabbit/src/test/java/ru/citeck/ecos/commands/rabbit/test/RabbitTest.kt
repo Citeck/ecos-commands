@@ -8,9 +8,9 @@ import ru.citeck.ecos.commands.*
 import ru.citeck.ecos.commands.annotation.CommandType
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
-import ru.citeck.ecos.commons.test.EcosWebAppContextMock
+import ru.citeck.ecos.commons.test.EcosWebAppApiMock
 import ru.citeck.ecos.rabbitmq.RabbitMqConn
-import ru.citeck.ecos.webapp.api.context.EcosWebAppContext
+import ru.citeck.ecos.webapp.api.EcosWebAppApi
 import java.lang.RuntimeException
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -169,8 +169,8 @@ class RabbitTest {
         init {
             remoteCommandsService
         }
-        override fun getEcosWebAppContext(): EcosWebAppContext {
-            return EcosWebAppContextMock(APP_0_NAME, APP_0_ID)
+        override fun getEcosWebAppApi(): EcosWebAppApi {
+            return EcosWebAppApiMock(APP_0_NAME, APP_0_ID)
         }
 
         override fun createRemoteCommandsService(): RemoteCommandsService {
@@ -183,8 +183,8 @@ class RabbitTest {
         init {
             remoteCommandsService
         }
-        override fun getEcosWebAppContext(): EcosWebAppContext {
-            return EcosWebAppContextMock(APP_1_NAME, APP_1_ID)
+        override fun getEcosWebAppApi(): EcosWebAppApi {
+            return EcosWebAppApiMock(APP_1_NAME, APP_1_ID)
         }
 
         override fun createRemoteCommandsService(): RemoteCommandsService {

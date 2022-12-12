@@ -9,7 +9,7 @@ import ru.citeck.ecos.commands.utils.CommandErrorUtils
 import ru.citeck.ecos.commands.utils.CommandUtils
 import ru.citeck.ecos.commons.json.Json
 import ru.citeck.ecos.rabbitmq.RabbitMqChannel
-import ru.citeck.ecos.webapp.api.properties.EcosWebAppProperties
+import ru.citeck.ecos.webapp.api.properties.EcosWebAppProps
 import kotlin.collections.HashMap
 
 class RabbitContext(
@@ -17,7 +17,7 @@ class RabbitContext(
     private val onCommand: (Command) -> CommandResult?,
     private val onResult: (CommandResult) -> Unit,
     private val properties: CommandsProperties,
-    webappProps: EcosWebAppProperties,
+    webappProps: EcosWebAppProps,
     listenMode: ListenMode
 ) {
 

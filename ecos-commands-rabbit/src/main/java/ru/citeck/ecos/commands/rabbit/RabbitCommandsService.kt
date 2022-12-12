@@ -15,7 +15,6 @@ import ru.citeck.ecos.webapp.api.promise.Promise
 import java.lang.IllegalArgumentException
 import java.util.*
 import java.util.concurrent.*
-import kotlin.concurrent.schedule
 import kotlin.concurrent.thread
 
 class RabbitCommandsService(
@@ -101,7 +100,7 @@ class RabbitCommandsService(
                 action.invoke(context)
             }
         }
-        val webAppCtx = factory.getEcosWebAppContext()
+        val webAppCtx = factory.getEcosWebAppApi()
         if (webAppCtx != null) {
             webAppCtx.doWhenAppReady {
                 addNewCtxAction.invoke()
@@ -128,7 +127,7 @@ class RabbitCommandsService(
                     "Expected one of $validTargetApps"
             )
         }
-        val listenBroadcast = properties.listenBroadcast && factory.getEcosWebAppContext()?.isReady() == true
+        val listenBroadcast = properties.listenBroadcast && factory.getEcosWebAppApi()?.isReady() == true
 
         if (command.targetApp == "all" &&
             (!listenBroadcast || !commandsService.containsExecutor(command.type))
