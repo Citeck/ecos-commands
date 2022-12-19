@@ -21,7 +21,7 @@ open class CommandsServiceFactory {
     val commandCtxController by lazy { createCommandCtxController() }
 
     val webappProps by lazy {
-        getEcosWebAppApi()?.getProperties() ?: EcosWebAppProps("", "")
+        getEcosWebAppApi()?.getProperties() ?: EcosWebAppProps.EMPTY
     }
 
     protected open fun createCommandsService(): CommandsService {
