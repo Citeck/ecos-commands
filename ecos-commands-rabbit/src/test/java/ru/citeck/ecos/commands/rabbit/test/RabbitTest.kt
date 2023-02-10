@@ -1,15 +1,14 @@
 package ru.citeck.ecos.commands.rabbit.test
 
-import com.github.fridujo.rabbitmq.mock.MockConnectionFactory
-import com.rabbitmq.client.ConnectionFactory
 import ecos.com.fasterxml.jackson210.databind.node.NullNode
 import org.junit.jupiter.api.Test
 import ru.citeck.ecos.commands.*
 import ru.citeck.ecos.commands.annotation.CommandType
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
-import ru.citeck.ecos.commons.test.EcosWebAppApiMock
 import ru.citeck.ecos.rabbitmq.RabbitMqConn
+import ru.citeck.ecos.rabbitmq.test.EcosRabbitMqTest
+import ru.citeck.ecos.test.commons.EcosWebAppApiMock
 import ru.citeck.ecos.webapp.api.EcosWebAppApi
 import java.lang.RuntimeException
 import java.util.*
@@ -40,11 +39,7 @@ class RabbitTest {
     @Test
     fun test() {
 
-        val factory: ConnectionFactory = MockConnectionFactory()
-        factory.host = "localhost"
-        factory.username = "admin"
-        factory.password = "admin"
-        val rabbitMqConn = RabbitMqConn(factory)
+        val rabbitMqConn = EcosRabbitMqTest.getConnection()
 
         val app0 = App0(rabbitMqConn)
         val app1 = App1(rabbitMqConn)

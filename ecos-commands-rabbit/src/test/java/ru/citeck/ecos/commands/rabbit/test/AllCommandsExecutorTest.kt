@@ -1,11 +1,9 @@
 package ru.citeck.ecos.commands.rabbit.test
 
-import com.github.fridujo.rabbitmq.mock.MockConnectionFactory
-import com.rabbitmq.client.ConnectionFactory
 import org.junit.jupiter.api.Test
 import ru.citeck.ecos.commands.CommandExecutor
 import ru.citeck.ecos.commands.dto.Command
-import ru.citeck.ecos.rabbitmq.RabbitMqConn
+import ru.citeck.ecos.rabbitmq.test.EcosRabbitMqTest
 import kotlin.test.assertEquals
 
 class AllCommandsExecutorTest {
@@ -21,11 +19,7 @@ class AllCommandsExecutorTest {
     @Test
     fun test() {
 
-        val factory: ConnectionFactory = MockConnectionFactory()
-        factory.host = "localhost"
-        factory.username = "admin"
-        factory.password = "admin"
-        val rabbitMqConn = RabbitMqConn(factory)
+        val rabbitMqConn = EcosRabbitMqTest.getConnection()
 
         val app0 = TestApp(APP_0_NAME, rabbitMqConn)
         val app1 = TestApp(APP_1_NAME, rabbitMqConn)

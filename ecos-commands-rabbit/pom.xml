@@ -16,9 +16,8 @@
     <properties>
 
         <amqp-client.version>5.4.3</amqp-client.version>
-        <rabbitmq-mock.version>1.0.11</rabbitmq-mock.version>
 
-        <ecos.rabbitmq.version>2.4.3</ecos.rabbitmq.version>
+        <ecos.rabbitmq.version>2.4.7</ecos.rabbitmq.version>
 
     </properties>
 
@@ -37,17 +36,17 @@
         </dependency>
 
         <dependency>
+            <groupId>ru.citeck.ecos.rabbitmq</groupId>
+            <artifactId>ecos-rabbitmq-test</artifactId>
+            <version>${ecos.rabbitmq.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
             <groupId>com.rabbitmq</groupId>
             <artifactId>amqp-client</artifactId>
             <version>${amqp-client.version}</version>
             <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>com.github.fridujo</groupId>
-            <artifactId>rabbitmq-mock</artifactId>
-            <version>${rabbitmq-mock.version}</version>
-            <scope>test</scope>
         </dependency>
 
     </dependencies>

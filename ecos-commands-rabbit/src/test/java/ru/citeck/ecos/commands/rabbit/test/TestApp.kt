@@ -4,8 +4,8 @@ import ru.citeck.ecos.commands.CommandsProperties
 import ru.citeck.ecos.commands.CommandsServiceFactory
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
-import ru.citeck.ecos.commons.test.EcosWebAppApiMock
 import ru.citeck.ecos.rabbitmq.RabbitMqConn
+import ru.citeck.ecos.test.commons.EcosWebAppApiMock
 import ru.citeck.ecos.webapp.api.EcosWebAppApi
 
 class TestApp(val appName: String, private val connectionFactory: RabbitMqConn) : CommandsServiceFactory() {

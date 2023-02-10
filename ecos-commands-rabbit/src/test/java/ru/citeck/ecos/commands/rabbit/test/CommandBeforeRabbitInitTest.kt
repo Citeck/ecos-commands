@@ -1,6 +1,5 @@
 package ru.citeck.ecos.commands.rabbit.test
 
-import com.github.fridujo.rabbitmq.mock.MockConnectionFactory
 import org.junit.jupiter.api.Test
 import ru.citeck.ecos.commands.CommandExecutor
 import ru.citeck.ecos.commands.CommandsServiceFactory
@@ -8,12 +7,14 @@ import ru.citeck.ecos.commands.annotation.CommandType
 import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
-import ru.citeck.ecos.commons.test.EcosWebAppApiMock
 import ru.citeck.ecos.rabbitmq.RabbitMqConn
+import ru.citeck.ecos.rabbitmq.test.EcosRabbitMqTest
+import ru.citeck.ecos.test.commons.EcosWebAppApiMock
 import ru.citeck.ecos.webapp.api.EcosWebAppApi
 import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
 import kotlin.test.assertTrue
 
 class CommandBeforeRabbitInitTest {
@@ -21,18 +22,24 @@ class CommandBeforeRabbitInitTest {
     @Test
     fun test() {
 
-        val factory = MockConnectionFactory()
-        factory.host = "localhost"
-        factory.username = "admin"
-        factory.password = "admin"
-
         val createConn: () -> RabbitMqConn = {
-            RabbitMqConn(factory, initSleepMs = 1000)
+            EcosRabbitMqTest.createConnection()
         }
 
+        val services0WhenAppReadyActions = mutableListOf<() -> Unit>()
         val services0 = object : CommandsServiceFactory() {
-            override fun getEcosWebAppApi(): EcosWebAppApi? {
-                return EcosWebAppApiMock("test0", "test0-" + UUID.randomUUID())
+            override fun getEcosWebAppApi(): EcosWebAppApi {
+                return object : EcosWebAppApiMock("test-before-init-0", "test0-" + UUID.randomUUID()) {
+                    override fun doWhenAppReady(order: Float, action: () -> Unit) {
+                        if (services0WhenAppReadyActions.isEmpty()) {
+                            thread(start = true) {
+                                Thread.sleep(5000)
+                                services0WhenAppReadyActions.forEach { it.invoke() }
+                            }
+                        }
+                        services0WhenAppReadyActions.add(action)
+                    }
+                }
             }
 
             override fun createRemoteCommandsService(): RemoteCommandsService {
@@ -43,7 +50,7 @@ class CommandBeforeRabbitInitTest {
 
         val services1 = object : CommandsServiceFactory() {
             override fun getEcosWebAppApi(): EcosWebAppApi {
-                return EcosWebAppApiMock("test1", "test1-" + UUID.randomUUID())
+                return EcosWebAppApiMock("test-before-init-1", "test1-" + UUID.randomUUID())
             }
             override fun createRemoteCommandsService(): RemoteCommandsService {
                 return RabbitCommandsService(this, createConn())
@@ -62,15 +69,15 @@ class CommandBeforeRabbitInitTest {
 
         val resultFuture = arrayOf(
             services0.commandsService.execute {
-                targetApp = "test1"
+                targetApp = "test-before-init-1"
                 body = TestCommand()
             },
             services0.commandsService.execute {
-                targetApp = "test1"
+                targetApp = "test-before-init-1"
                 body = TestCommand()
             },
             services0.commandsService.execute {
-                targetApp = "test1"
+                targetApp = "test-before-init-1"
                 body = TestCommand()
             }
         ).map {
