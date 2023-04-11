@@ -7,10 +7,12 @@ import ru.citeck.ecos.commands.annotation.CommandType
 import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
+import ru.citeck.ecos.commons.promise.Promises
 import ru.citeck.ecos.rabbitmq.RabbitMqConn
 import ru.citeck.ecos.rabbitmq.test.EcosRabbitMqTest
 import ru.citeck.ecos.test.commons.EcosWebAppApiMock
 import ru.citeck.ecos.webapp.api.EcosWebAppApi
+import java.time.Duration
 import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
@@ -67,6 +69,7 @@ class CommandBeforeRabbitInitTest {
             }
         })
 
+
         val resultFuture = arrayOf(
             services0.commandsService.execute {
                 targetApp = "test-before-init-1"
@@ -80,18 +83,14 @@ class CommandBeforeRabbitInitTest {
                 targetApp = "test-before-init-1"
                 body = TestCommand()
             }
-        ).map {
-            CompletableFuture.supplyAsync { it.get() }
-        }
+        ).map { it.asPromise() }
 
-        CompletableFuture.allOf(*resultFuture.toTypedArray()).get(30, TimeUnit.SECONDS)
+        Promises.all(resultFuture).get(Duration.ofSeconds(30))
 
-        assertTrue(resultFuture.all { it.isDone })
+        assertTrue(resultFuture.all { it.isDone() })
         assertTrue(
             resultFuture.all {
-                (it as CompletableFuture<CommandResult>)
-                    .getNow(null)
-                    .getResultAs(String::class.java) == answer
+                it.get(Duration.ZERO).getResultAs(String::class.java) == answer
             }
         )
     }
