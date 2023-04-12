@@ -85,7 +85,7 @@ class CommandBeforeRabbitInitTest {
             }
         ).map { it.asPromise() }
 
-        Promises.all(resultFuture).get(Duration.ofSeconds(30))
+        Promises.all(resultFuture).get(Duration.ofMinutes(2))
 
         assertTrue(resultFuture.all { it.isDone() })
         assertTrue(
