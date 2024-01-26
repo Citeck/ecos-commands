@@ -42,7 +42,9 @@ class CommandFutureImpl<T> (
         return try {
             getImpl()
         } catch (e: PromiseException) {
-            log.error(e) { "Promise exception" }
+            // debug because this stacktrace will print full trace include
+            // cause and this may create too much duplicates in logs
+            log.debug(e) { "Promise exception" }
             // for backward compatibility
             throw e.cause ?: e
         }
