@@ -1,5 +1,6 @@
 package ru.citeck.ecos.commands.future
 
+import mu.KotlinLogging
 import ru.citeck.ecos.commons.promise.PromiseException
 import ru.citeck.ecos.webapp.api.promise.Promise
 import java.time.Duration
@@ -8,6 +9,10 @@ import java.util.concurrent.TimeUnit
 class CommandFutureImpl<T> (
     private val impl: Promise<T>
 ) : CommandFuture<T> {
+
+    companion object {
+        private val log = KotlinLogging.logger {}
+    }
 
     override fun get(timeout: Long, unit: TimeUnit): T {
         return handleGet { impl.get(Duration.ofMillis(unit.toMillis(timeout))) }
@@ -37,6 +42,7 @@ class CommandFutureImpl<T> (
         return try {
             getImpl()
         } catch (e: PromiseException) {
+            log.error(e) { "Promise exception" }
             // for backward compatibility
             throw e.cause ?: e
         }

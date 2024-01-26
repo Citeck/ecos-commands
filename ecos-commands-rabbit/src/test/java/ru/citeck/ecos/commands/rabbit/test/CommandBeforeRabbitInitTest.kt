@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test
 import ru.citeck.ecos.commands.CommandExecutor
 import ru.citeck.ecos.commands.CommandsServiceFactory
 import ru.citeck.ecos.commands.annotation.CommandType
-import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
 import ru.citeck.ecos.commons.promise.Promises
@@ -14,8 +13,6 @@ import ru.citeck.ecos.test.commons.EcosWebAppApiMock
 import ru.citeck.ecos.webapp.api.EcosWebAppApi
 import java.time.Duration
 import java.util.*
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 import kotlin.test.assertTrue
 
@@ -68,7 +65,6 @@ class CommandBeforeRabbitInitTest {
                 return answer
             }
         })
-
 
         val resultFuture = arrayOf(
             services0.commandsService.execute {
