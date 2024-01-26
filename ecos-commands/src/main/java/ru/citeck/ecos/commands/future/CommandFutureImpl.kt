@@ -1,5 +1,6 @@
 package ru.citeck.ecos.commands.future
 
+import ru.citeck.ecos.commons.promise.PromiseException
 import ru.citeck.ecos.webapp.api.promise.Promise
 import java.time.Duration
 import java.util.concurrent.TimeUnit
@@ -9,7 +10,7 @@ class CommandFutureImpl<T> (
 ) : CommandFuture<T> {
 
     override fun get(timeout: Long, unit: TimeUnit): T {
-        return impl.get(Duration.ofMillis(unit.toMillis(timeout)))
+        return handleGet { impl.get(Duration.ofMillis(unit.toMillis(timeout))) }
     }
 
     override fun cancel(mayInterruptIfRunning: Boolean): Boolean {
@@ -25,10 +26,19 @@ class CommandFutureImpl<T> (
     }
 
     override fun get(): T {
-        return impl.get()
+        return handleGet { impl.get() }
     }
 
     override fun asPromise(): Promise<T> {
         return impl
+    }
+
+    private inline fun handleGet(crossinline getImpl: () -> T): T {
+        return try {
+            getImpl()
+        } catch (e: PromiseException) {
+            // for backward compatibility
+            throw e.cause ?: e
+        }
     }
 }
