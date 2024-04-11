@@ -51,7 +51,7 @@ class RabbitCommandsService(
         addNewContext(RabbitContext.ListenMode.NONE) { rabbitCtx ->
 
             contextToSendCommands = rabbitCtx
-            val futures = mutableListOf<CompletableFuture<Boolean>>()
+            val futures = mutableListOf<CompletableFuture<*>>()
 
             log.debug { "Init commands queue size: ${initCommandsQueue.size}" }
 
@@ -59,11 +59,11 @@ class RabbitCommandsService(
             while (commandItem != null) {
                 try {
                     val localItem = commandItem
-                    futures.add(
-                        executeImpl(rabbitCtx, commandItem.command).thenApplyAsync { res ->
-                            localItem.resultFuture.complete(res)
-                        }
-                    )
+                    val future = executeImpl(rabbitCtx, commandItem.command)
+                    future.thenApply { res ->
+                        localItem.resultFuture.complete(res)
+                    }
+                    futures.add(future)
                 } catch (e: Exception) {
                     log.error(e) { "Init command can't be executed: ${commandItem.command}" }
                 }
