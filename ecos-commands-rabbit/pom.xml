@@ -17,7 +17,7 @@
 
         <amqp-client.version>5.4.3</amqp-client.version>
 
-        <ecos.rabbitmq.version>2.4.9</ecos.rabbitmq.version>
+        <ecos.rabbitmq.version>2.7.3</ecos.rabbitmq.version>
 
     </properties>
 

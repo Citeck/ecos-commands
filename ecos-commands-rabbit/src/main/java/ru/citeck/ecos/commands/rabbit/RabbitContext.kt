@@ -48,6 +48,7 @@ class RabbitContext(
     init {
 
         declareQueue(appErrQueue, appErrQueue)
+        declareQueue(appResQueue, appResQueue, durable = false)
 
         if (listenMode == ListenMode.COMMANDS || listenMode == ListenMode.ALL) {
 
@@ -66,7 +67,6 @@ class RabbitContext(
             instanceComConsumerTag = ""
         }
         resConsumerTag = if (listenMode == ListenMode.RESULTS || listenMode == ListenMode.ALL) {
-            declareQueue(appResQueue, appResQueue, durable = false)
             addConsumer(appResQueue, CommandResult::class.java) { msg, _ ->
                 onResult(msg)
             }
@@ -117,6 +117,7 @@ class RabbitContext(
 
     @Synchronized
     private fun declareQueue(queue: String, routingKey: String, durable: Boolean = true) {
+        log.debug { "Declare queue $queue key: $routingKey durable: $durable" }
         channel.declareQueue(queue, durable)
         exchangeDeclare()
         channel.queueBind(queue, COM_EXCHANGE, routingKey)

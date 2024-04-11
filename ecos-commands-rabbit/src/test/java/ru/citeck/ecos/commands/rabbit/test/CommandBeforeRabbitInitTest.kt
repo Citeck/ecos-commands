@@ -26,30 +26,32 @@ class CommandBeforeRabbitInitTest {
         }
 
         val services0WhenAppReadyActions = mutableListOf<() -> Unit>()
-        val services0 = object : CommandsServiceFactory() {
-            override fun getEcosWebAppApi(): EcosWebAppApi {
-                return object : EcosWebAppApiMock("test-before-init-0", "test0-" + UUID.randomUUID()) {
-                    override fun doWhenAppReady(order: Float, action: () -> Unit) {
-                        if (services0WhenAppReadyActions.isEmpty()) {
-                            thread(start = true) {
-                                Thread.sleep(5000)
-                                services0WhenAppReadyActions.forEach { it.invoke() }
-                            }
-                        }
-                        services0WhenAppReadyActions.add(action)
+        val webAppApi0 = object : EcosWebAppApiMock("test-before-init-0", "test0-" + UUID.randomUUID()) {
+            override fun doWhenAppReady(order: Float, action: () -> Unit) {
+                if (services0WhenAppReadyActions.isEmpty()) {
+                    thread(start = true) {
+                        Thread.sleep(5000)
+                        services0WhenAppReadyActions.forEach { it.invoke() }
                     }
                 }
+                services0WhenAppReadyActions.add(action)
             }
-
+        }
+        val services0 = object : CommandsServiceFactory() {
+            override fun getEcosWebAppApi(): EcosWebAppApi {
+                return webAppApi0
+            }
             override fun createRemoteCommandsService(): RemoteCommandsService {
                 return RabbitCommandsService(this, createConn())
             }
         }
         services0.remoteCommandsService
 
+        val webAppApi1 = EcosWebAppApiMock("test-before-init-1", "test1-" + UUID.randomUUID())
+
         val services1 = object : CommandsServiceFactory() {
             override fun getEcosWebAppApi(): EcosWebAppApi {
-                return EcosWebAppApiMock("test-before-init-1", "test1-" + UUID.randomUUID())
+                return webAppApi1
             }
             override fun createRemoteCommandsService(): RemoteCommandsService {
                 return RabbitCommandsService(this, createConn())

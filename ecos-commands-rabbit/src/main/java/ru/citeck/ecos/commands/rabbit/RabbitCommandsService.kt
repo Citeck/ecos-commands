@@ -10,7 +10,7 @@ import ru.citeck.ecos.commands.utils.CommandUtils
 import ru.citeck.ecos.commands.utils.WeakValuesMap
 import ru.citeck.ecos.commons.promise.Promises
 import ru.citeck.ecos.context.lib.auth.AuthContext
-import ru.citeck.ecos.rabbitmq.RabbitMqConn
+import ru.citeck.ecos.rabbitmq.ds.RabbitMqConnection
 import ru.citeck.ecos.webapp.api.promise.Promise
 import java.lang.IllegalArgumentException
 import java.util.*
@@ -19,7 +19,7 @@ import kotlin.concurrent.thread
 
 class RabbitCommandsService(
     private val factory: CommandsServiceFactory,
-    private val rabbitConnection: RabbitMqConn
+    private val rabbitConnection: RabbitMqConnection
 ) : RemoteCommandsService {
 
     companion object {
@@ -28,7 +28,7 @@ class RabbitCommandsService(
 
     @Volatile
     private var contextToSendCommands: RabbitContext? = null
-    private var initCommandsQueue = ConcurrentLinkedQueue<InitCommandItem>()
+    private val initCommandsQueue = ConcurrentLinkedQueue<InitCommandItem>()
 
     private val allContexts = CopyOnWriteArrayList<RabbitContext>()
 
@@ -53,6 +53,8 @@ class RabbitCommandsService(
             contextToSendCommands = rabbitCtx
             val futures = mutableListOf<CompletableFuture<Boolean>>()
 
+            log.debug { "Init commands queue size: ${initCommandsQueue.size}" }
+
             var commandItem = initCommandsQueue.poll()
             while (commandItem != null) {
                 try {
@@ -67,6 +69,8 @@ class RabbitCommandsService(
                 }
                 commandItem = initCommandsQueue.poll()
             }
+
+            log.debug { "Wait init commands result. Commands count: ${futures.size}" }
             // init action should not block execution
             thread(name = "init-commands-waiting-thread") {
                 try {
@@ -175,6 +179,7 @@ class RabbitCommandsService(
     override fun execute(command: Command): Promise<CommandResult> {
         val ctxToSendCommands = contextToSendCommands
         val future = if (ctxToSendCommands == null) {
+            log.debug { "Context to send commands is not created yet. Add command to init queue" }
             val resultFuture = CompletableFuture<CommandResult>()
             initCommandsQueue.add(InitCommandItem(command, resultFuture))
             resultFuture

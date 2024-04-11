@@ -9,6 +9,7 @@ import ru.citeck.ecos.commands.CommandExecutor
 import ru.citeck.ecos.commands.annotation.CommandType
 import ru.citeck.ecos.commons.data.DataValue
 import ru.citeck.ecos.rabbitmq.RabbitMqConn
+import ru.citeck.ecos.rabbitmq.RabbitMqConnProps
 import kotlin.concurrent.thread
 
 @Disabled("works only with real rabbitmq")
@@ -34,7 +35,7 @@ class CommandsStressTest {
             factory.port = 5672
             factory.username = "admin"
             factory.password = "admin"
-            val rabbitMqConn = RabbitMqConn(factory, initSleepMs = 0L)
+            val rabbitMqConn = RabbitMqConn(factory, initSleepMs = 0L, props = RabbitMqConnProps())
 
             TestApp(name, rabbitMqConn)
         }
