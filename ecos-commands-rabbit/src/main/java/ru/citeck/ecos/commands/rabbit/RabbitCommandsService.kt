@@ -148,7 +148,7 @@ class RabbitCommandsService(
 
         val ctxToSendCommands = contextToSendCommands ?: return Promises.resolve(emptyList())
 
-        val future = GroupResultFuture()
+        val future = GroupResultFuture(command)
 
         val ttlMs = command.ttl?.toMillis() ?: 0
         if (ttlMs <= 0 && ttlMs > TimeUnit.MINUTES.toMillis(10)) {
