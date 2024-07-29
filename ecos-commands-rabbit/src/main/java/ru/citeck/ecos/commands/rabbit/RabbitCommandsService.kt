@@ -1,6 +1,6 @@
 package ru.citeck.ecos.commands.rabbit
 
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import ru.citeck.ecos.commands.CommandsService
 import ru.citeck.ecos.commands.CommandsServiceFactory
 import ru.citeck.ecos.commands.dto.Command
@@ -8,10 +8,10 @@ import ru.citeck.ecos.commands.dto.CommandResult
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
 import ru.citeck.ecos.commands.utils.CommandUtils
 import ru.citeck.ecos.commands.utils.WeakValuesMap
-import ru.citeck.ecos.commons.promise.Promises
 import ru.citeck.ecos.context.lib.auth.AuthContext
 import ru.citeck.ecos.rabbitmq.ds.RabbitMqConnection
 import ru.citeck.ecos.webapp.api.promise.Promise
+import ru.citeck.ecos.webapp.api.promise.Promises
 import java.lang.IllegalArgumentException
 import java.util.*
 import java.util.concurrent.*

@@ -1,14 +1,14 @@
 package ru.citeck.ecos.commands.remote
 
-import ecos.com.fasterxml.jackson210.databind.node.NullNode
+import com.fasterxml.jackson.databind.node.NullNode
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import ru.citeck.ecos.commands.CommandsServiceFactory
 import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandError
 import ru.citeck.ecos.commands.dto.CommandResult
-import ru.citeck.ecos.commons.promise.Promises
 import ru.citeck.ecos.webapp.api.promise.Promise
+import ru.citeck.ecos.webapp.api.promise.Promises
 import java.time.Instant
 import java.util.*
 

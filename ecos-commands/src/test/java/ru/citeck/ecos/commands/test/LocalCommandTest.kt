@@ -1,6 +1,6 @@
 package ru.citeck.ecos.commands.test
 
-import ecos.com.fasterxml.jackson210.databind.node.NullNode
+import com.fasterxml.jackson.databind.node.NullNode
 import org.junit.jupiter.api.Test
 import ru.citeck.ecos.commands.*
 import ru.citeck.ecos.commands.annotation.CommandType

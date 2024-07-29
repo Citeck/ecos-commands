@@ -1,6 +1,6 @@
 package ru.citeck.ecos.commands.rabbit
 
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandResult
 import java.util.concurrent.CompletableFuture

@@ -1,12 +1,12 @@
 package ru.citeck.ecos.commands.future
 
-import mu.KotlinLogging
-import ru.citeck.ecos.commons.promise.PromiseException
+import io.github.oshai.kotlinlogging.KotlinLogging
 import ru.citeck.ecos.webapp.api.promise.Promise
+import ru.citeck.ecos.webapp.api.promise.PromiseException
 import java.time.Duration
 import java.util.concurrent.TimeUnit
 
-class CommandFutureImpl<T> (
+class CommandFutureImpl<T>(
     private val impl: Promise<T>
 ) : CommandFuture<T> {
 

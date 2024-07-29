@@ -1,7 +1,7 @@
 package ru.citeck.ecos.commands.rabbit
 
 import com.rabbitmq.client.BuiltinExchangeType
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import ru.citeck.ecos.commands.CommandsProperties
 import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandResult

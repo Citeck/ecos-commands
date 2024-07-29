@@ -6,11 +6,11 @@ import ru.citeck.ecos.commands.CommandsServiceFactory
 import ru.citeck.ecos.commands.annotation.CommandType
 import ru.citeck.ecos.commands.rabbit.RabbitCommandsService
 import ru.citeck.ecos.commands.remote.RemoteCommandsService
-import ru.citeck.ecos.commons.promise.Promises
 import ru.citeck.ecos.rabbitmq.RabbitMqConn
 import ru.citeck.ecos.rabbitmq.test.EcosRabbitMqTest
 import ru.citeck.ecos.test.commons.EcosWebAppApiMock
 import ru.citeck.ecos.webapp.api.EcosWebAppApi
+import ru.citeck.ecos.webapp.api.promise.Promises
 import java.time.Duration
 import java.util.*
 import kotlin.concurrent.thread

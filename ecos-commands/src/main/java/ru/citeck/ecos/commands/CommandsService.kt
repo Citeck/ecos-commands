@@ -1,6 +1,6 @@
 package ru.citeck.ecos.commands
 
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import ru.citeck.ecos.commands.annotation.CommandType
 import ru.citeck.ecos.commands.dto.Command
 import ru.citeck.ecos.commands.dto.CommandError
@@ -11,7 +11,7 @@ import ru.citeck.ecos.commands.future.CommandFutureImpl
 import ru.citeck.ecos.commands.utils.CommandErrorUtils
 import ru.citeck.ecos.commands.utils.CommandUtils
 import ru.citeck.ecos.commons.json.Json
-import ru.citeck.ecos.commons.promise.Promises
+import ru.citeck.ecos.webapp.api.promise.Promises
 import ru.citeck.ecos.webapp.api.properties.EcosWebAppProps
 import java.time.Duration
 import java.time.Instant

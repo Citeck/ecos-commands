@@ -1,7 +1,7 @@
 package ru.citeck.ecos.commands
 
-import ecos.com.fasterxml.jackson210.databind.annotation.JsonDeserialize
-import mu.KotlinLogging
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
+import io.github.oshai.kotlinlogging.KotlinLogging
 import ru.citeck.ecos.commons.json.serialization.annotation.IncludeNonDefault
 
 @IncludeNonDefault
